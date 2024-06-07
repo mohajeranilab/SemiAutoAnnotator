@@ -7,11 +7,11 @@ import numpy as np
 import random
 import json
 from datetime import datetime
-from tkinter import Tk, filedialog
+from tkinter import Tk, filedialog, messagebox
 import shutil
 import sys
 
-
+# CTRL ZING NOT WORKING
 
 def dummy_function(event, x, y, flags, param):
     pass
@@ -94,6 +94,10 @@ def extract_frames():
     root.destroy()
     return model_path, video_name, video_extraction_dir
 
+def clustering_data():
+    pass
+
+
 def save_annotations_to_json(annotations, type):
     """
     Saves annotations made by the user, bbox or pose, to their respective json file
@@ -126,43 +130,73 @@ def save_annotations_to_json(annotations, type):
         json.dump(data, f, indent=4)
 
 def make_video():
-    """
-    If the user presses "V", it will begin making a video of the annotations created for a selected video file
 
-    """
+    video_path = filedialog.askdirectory(
+        initialdir="/", 
+        title="SELECT VIDEO FOLDER IN used_videos/",
+        
+    )
+    print(video_path)
+
     print("Combining annotated frames to video ......")
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v') 
-    video = cv2.VideoWriter("output_video.mp4", fourcc, 30.0, (IMAGE_WIDTH, IMAGE_HEIGHT))
+
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')
+    video = cv2.VideoWriter("output_video.avi", fourcc, 30.0, (IMAGE_WIDTH, IMAGE_HEIGHT))
     frames_to_write = {}
 
+    # First, gather all frames to write
     for annotation_file in ANNOTATION_FILES:
-        if os.path.getsize(video_extraction_dir +  '/' + annotation_file) > 0:
-            with open(video_extraction_dir +  '/' + annotation_file, 'r') as f:
-                data = json.load(f)
-            
-        for image_data in data["images"]:
-            frames_to_write[image_data["id"]] = image_data["file_name"]
+     
+        with open(video_path + '/' + annotation_file, 'r') as f:
+            data = json.load(f)
+        if len(data["annotations"]) != 0:
+            for image_data in data["images"]:
+                frames_to_write[image_data["id"]] = image_data["file_name"]
+        else:
+            continue
+    if not frames_to_write:
+        print("No annotations have been made for the selected video")
+
+
+    all_annotations = {}
 
     for annotation_file in ANNOTATION_FILES:
-        with open(video_extraction_dir + '/' + annotation_file, 'r') as f:
+        with open(video_path + '/' + annotation_file, 'r') as f:
             data = json.load(f)
         
         for annotation in data["annotations"]:
-            if annotation["image_id"] in frames_to_write:
-                image = cv2.imread(frames_to_write[annotation["image_id"]])
-                
+            image_id = annotation["image_id"]
+            if image_id not in all_annotations:
+                all_annotations[image_id] = []
+            all_annotations[image_id].append((annotation_file, annotation))
+
+    # Draw all annotations on each frame
+    for image_id, image_file in frames_to_write.items():
+        if image_id in all_annotations:
+            image = cv2.imread(image_file)
+            
+            for annotation_file, annotation in all_annotations[image_id]:
                 if annotation_file == "/bbox_annotations.json":
-                    image = cv2.rectangle(image, (annotation["bbox"][0], annotation["bbox"][1]), (annotation["bbox"][2], annotation["bbox"][3]), ANNOTATION_COLORS[object_id], 2)
+                    image = cv2.rectangle(image, (annotation["bbox"][0], annotation["bbox"][1]), 
+                                        (annotation["bbox"][2], annotation["bbox"][3]), 
+                                        ANNOTATION_COLORS[annotation["object_id"]], 2)
 
                 elif annotation_file == "/pose_annotations.json":
                     for keypoint_annotation in annotation["keypoints"]:
-                        image = cv2.circle(image, (keypoint_annotation[1][0], keypoint_annotation[1][1]), 5, ANNOTATION_COLORS[annotation["object_id"]], -1)
+                        if len(keypoint_annotation) != 0:
+                            image = cv2.circle(image, (keypoint_annotation[1][0], keypoint_annotation[1][1]), 
+                                            5, ANNOTATION_COLORS[annotation["object_id"]], -1)
 
             video.write(image)
+
     video.release()
-   
-    print("Video has been created called output_video.mp4")
+
+    print("Video has been created called output_video")
     
+
+
+
+
 def show_image(): 
     """
     Shows the image, also resizes it to a specific size and also moves it to a specific place on the screen
@@ -172,8 +206,10 @@ def show_image():
 
     cv2.namedWindow(img_name, cv2.WINDOW_NORMAL)  
     cv2.resizeWindow(img_name, 700, 500)  
- 
+    
     cv2.moveWindow(img_name, 900, 320)
+    cv2.putText(img, text_to_write, (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
+    cv2.putText(img, f"Model: {model_detecting}", (int(IMAGE_WIDTH * 0.75), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
     cv2.imshow(img_name, img)
    
 def handle_prev_img():
@@ -208,8 +244,10 @@ def get_id(annotation_files, data_type):
     id_set = set()
     for annotation_file in annotation_files:
         with open(video_extraction_dir + annotation_file, 'r') as f:
-            data = json.load(f)
-        id_set.update(variable["id"] for variable in data[data_type])
+            data_file = json.load(f)
+        if len(data["images"]) == 0:
+            id = 0
+        id_set.update(data["id"] for data in data_file[data_type])
     id = 0
     while id in id_set:
         id += 1
@@ -254,8 +292,9 @@ def drawing_bbox(event, x, y, flags, param):
     hidden for drawing bounding boxes around objects that are hidden/obscured
     """
 
-    global click_count, start_x, start_y, img, object_id, annotation_id, img_id
+    global click_count, start_x, start_y, img, object_id, annotation_id, img_id, text_to_write
     annotation_id = get_id(ANNOTATION_FILES, "annotations")
+    img_id = None
     for annotation_file in ANNOTATION_FILES:
         with open(video_extraction_dir + annotation_file, 'r') as f:
             data = json.load(f)
@@ -264,13 +303,13 @@ def drawing_bbox(event, x, y, flags, param):
             break_loop = False
             for image_data in data["images"]:
                 if image_data["file_name"] == img_path:
-                    found = True
+                   
                     img_id = image_data["id"]
                     break_loop = True
                     break
             if break_loop:
                 break
-    if not found:
+    if img_id == None:
         img_id = get_id(ANNOTATION_FILES, "images")
   
 
@@ -278,15 +317,17 @@ def drawing_bbox(event, x, y, flags, param):
         img = cv2.imread(img_path)
         drawing_annotations(img)
 
-        if is_hidden == 1:
-            cv2.putText(img, f"Bounding Box Mode - Hidden - {object_id}", (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
-        elif bbox_type == "feces":
-            cv2.putText(img, f"Bounding Box Mode - Feces - {object_id}", (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
-        elif bbox_type == "normal":
-            cv2.putText(img, f"Bounding Box Mode - {object_id}", (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
         img = cv2.rectangle(img, (start_x, start_y), (x, y), ANNOTATION_COLORS[object_id], 2)
-        show_image()
+        if is_hidden == 1:
         
+            text_to_write = f"Bounding Box Mode - Hidden - {object_id}"
+        elif bbox_type == "feces":
+            text_to_write = f"Bounding Box Mode - Feces"
+        elif bbox_type == "normal":
+            text_to_write = f"Bounding Box Mode - {object_id}"
+        
+        show_image()
+
     if event == cv2.EVENT_LBUTTONDOWN:
         if click_count == 0:
          
@@ -332,6 +373,7 @@ def drawing_bbox(event, x, y, flags, param):
            
             print(f'Bounding Box added: (X1={start_x}, Y1={start_y}, X2={end_x}, Y2={end_y})')
             img = cv2.rectangle(img, (start_x, start_y), (end_x, end_y), ANNOTATION_COLORS[object_id], 2)
+            
             show_image()
             save_annotations_to_json(info, "bbox")
    
@@ -355,8 +397,9 @@ def drawing_pose(event, x, y, flags, param):
     if event == cv2.EVENT_LBUTTONDOWN:
         point = (x, y)
         img = cv2.circle(img, (point[0], point[1]), 5, ANNOTATION_COLORS[object_id], -1)
-        print(pose_type.capitalize())
+
         img = cv2.putText(img, pose_type.capitalize(), (point[0], point[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
+        
         show_image()
         to_append = (pose_type, (point))    
         for annotation in data["annotations"]:
@@ -477,8 +520,366 @@ Press Cancel or exit out of the file explorer when finished choosing videos.
     print("Model has finished training, use the new model weights and run the program again.")
     sys.exit()
 
+def annotating(img_path, img_name, video_extraction_dir):
+    global already_passed, bbox_type, pose_type, bbox_mode, pose_mode, object_id, img, is_hidden, annotation_id, img_id, click_count, model_detecting, text_to_write, img_num
+    img = cv2.imread(img_path)
+    bbox_mode = False
+    pose_mode = False
+    object_id = 1
+    is_detected = False
+    is_hidden = 0
+    img_id = None
+    click_count = 0
     
+   
+ 
+    for annotation_file in ANNOTATION_FILES:
+        with open(video_extraction_dir + annotation_file, 'r') as f:
+            data = json.load(f)
 
+            for image_data in data["images"]:
+                if image_data["file_name"] == img_path:
+                    img_id = image_data["id"]
+
+    if img_id == None:
+        img_id = get_id(ANNOTATION_FILES, "images")
+
+    with open(video_extraction_dir + "/bbox_annotations.json", 'r') as f:
+        data = json.load(f)
+
+        for annotation in data["annotations"]:
+            if annotation["image_id"] == img_id:
+                if annotation["type"] == "detected_bbox":
+                    is_detected = True
+                    break
+
+    if is_detected == False and model_detecting == "On":
+        bbox_values = model.predict(img_path, conf=CONF_THRESHOLD)[0].boxes
+        num_of_objects = len(bbox_values.conf)
+        conf_list = []
+        for i in range(num_of_objects):
+            conf = bbox_values.conf[i].item()
+            conf_list.append(conf)
+            pred_x1, pred_y1, pred_x2, pred_y2 = map(int, bbox_values.xyxy[i].tolist())
+
+            annotation_id = get_id(ANNOTATION_FILES, "annotations")
+         
+            info = {
+                "images": {
+                    "id": img_id,
+                    "file_name": img_path,
+                    "image_height": IMAGE_HEIGHT,
+                    "image_width": IMAGE_WIDTH
+                },
+                "annotation": {
+                    "id": annotation_id,
+                    "bbox": [pred_x1, pred_y1, pred_x2, pred_y2],
+                    "image_id":img_id,
+                    "object_id":object_id,
+                    "iscrowd": 0,
+                    "area": (pred_y2 - pred_y1) * (pred_x2 - pred_x1),
+                    "type": "detected_bbox",
+                    "conf": conf,
+                    "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                }
+            }
+            save_annotations_to_json(info, "bbox")
+            annotation_id += 1
+        
+    breakout = False
+    drawing_annotations(img)
+    text_to_write = " "
+    show_image()
+
+    while True:
+        key = cv2.waitKey(1)
+        if key == 27 or cv2.getWindowProperty(img_name, cv2.WND_PROP_VISIBLE) < 1: # "Escape": Exits the program 
+            cleaning(video_extraction_dir)
+          
+
+            sys.exit()
+        
+        elif key == ord('r'): # "R": Begins retraining the model with the annotations a user chooses
+            retrain()
+          
+
+        elif key == ord('v'): # "V": Making video of annotated images belonging to a video
+    
+            make_video()
+
+        elif key == ord('m'): 
+            img = cv2.imread(img_path)
+            model_detecting = "Off" if model_detecting == "On" else "On"
+            drawing_annotations(img)
+
+            show_image()
+            img_num -= 1
+            return
+        elif key == ord('b'): # "B": Drawing bounding box annotations 
+            if bbox_mode == False: 
+                bbox_mode = True
+                click_count = 0
+                img = cv2.imread(img_path)
+                drawing_annotations(img)
+                text_to_write = f"Bounding Box Mode - {object_id}"
+                show_image()
+                
+                cv2.setMouseCallback(img_name, drawing_bbox)  
+            
+                pose_mode = False
+                bbox_type = "normal"
+
+            else:
+                bbox_mode = False
+                bbox_type = "normal"
+                is_hidden = 0
+                img = cv2.imread(img_path)
+                drawing_annotations(img)
+           
+                show_image()
+                cv2.setMouseCallback(img_name, dummy_function)
+        
+        elif key == ord('p'): # "P": Drawing pose annotations
+            if pose_mode == False:
+                pose_mode = True
+                click_count = 0
+                img = cv2.imread(img_path)
+                drawing_annotations(img)
+                text_to_write = f"Pose Mode - {object_id}"
+                show_image()
+            
+                bbox_mode = False
+                pose_type = ""
+                annotation_id = get_id(ANNOTATION_FILES, "annotations")
+                
+                info = {
+                    "images": {
+                        "id": img_id,
+                        "file_name": img_path,
+                        "image_height": IMAGE_HEIGHT,
+                        "image_width": IMAGE_WIDTH
+                    },
+                    "annotation": {
+                        "id": annotation_id,
+                        "keypoints": [],
+                        "image_id":img_id,
+                        "object_id":object_id,
+                        "iscrowd": 0,
+                        "type": "pose",
+                        "conf": 1,
+                        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                }
+                save_annotations_to_json(info, "pose")
+                cv2.setMouseCallback(img_name, dummy_function)
+            else:
+                pose_mode = False
+                img = cv2.imread(img_path)
+                drawing_annotations(img)
+                
+                show_image()
+                cv2.setMouseCallback(img_name, dummy_function)
+
+
+        elif key == 13: # "Enter": Go to the next image
+            cv2.destroyAllWindows()
+            pose_mode = False
+            bbox_mode = False
+            already_passed = False
+            object_id = 1
+            return
+
+        elif key == 8: # "Backspace": Go back to previous image  
+            handle_prev_img()
+            return
+
+        elif key == ord('d'): # "D": Delete all annotations for the current image
+            for annotation_file in ANNOTATION_FILES:
+                with open(video_extraction_dir + annotation_file, 'r') as f:
+                    data = json.load(f)
+                data["annotations"] = [annotation for annotation in data["annotations"] if annotation["image_id"] != img_id]
+    
+                with open(video_extraction_dir + annotation_file, 'w') as f:
+                    json.dump(data, f, indent=4)
+
+            img = cv2.imread(img_path)
+        
+            show_image()
+            # cv2.setMouseCallback(img_name, dummy_function)
+            # bbox_mode = False
+            # pose_mode = False
+            # object_id = 1
+            continue
+
+        elif key == 26: # "Ctrl + Z": Undo most recent annotation, if are none annotations go to previous image 
+            is_empty = True
+
+            for annotation_file in ANNOTATION_FILES:
+                with open(video_extraction_dir + annotation_file, 'r') as f:
+                    data = json.load(f)
+                
+                if any(annotation["image_id"] == img_id for annotation in data["annotations"]):
+                    is_empty = False
+                    break
+            
+            if is_empty:
+                handle_prev_img()
+                object_id = 1
+                return
+
+            latest_time = max(datetime.strptime(annotation["time"], "%Y-%m-%d %H:%M:%S") for annotation in data["annotations"] if annotation["image_id"] == img_id)
+            
+            for annotation_file in ANNOTATION_FILES:
+                with open(video_extraction_dir + annotation_file, 'r') as f:
+                    data = json.load(f)
+                
+                for annotation in data["annotations"]:
+                    if annotation["time"] == latest_time.strftime("%Y-%m-%d %H:%M:%S"):
+                        object_id = annotation["object_id"]
+                        if annotation["type"] == "pose":
+                            if annotation["keypoints"]:
+                                annotation["keypoints"].pop()
+                            else:
+                                data["annotations"].remove(annotation)
+                        else:
+                            data["annotations"].remove(annotation)
+                        break
+                
+                with open(video_extraction_dir + annotation_file, 'w') as f:
+                    json.dump(data, f, indent=4)
+            
+            img = cv2.imread(img_path)
+            drawing_annotations(img)
+
+            mode_text = ""
+            if bbox_mode:
+                mode_text = "Bounding Box Mode - "
+                if is_hidden:
+                    mode_text += "Hidden - "
+                elif bbox_type == "feces":
+                    mode_text += "Feces - "
+            elif pose_mode:
+                mode_text = "Pose Mode - "
+                if pose_type:
+                    mode_text += f"{pose_type.capitalize()} - "
+            mode_text += str(object_id)
+
+            
+            already_passed = False
+            drawing_annotations(img)
+            text_to_write = mode_text
+            show_image()
+            
+        elif key == ord('n'): # "N": Next object ID
+            object_id += 1
+
+            if bbox_mode == True:
+                img = cv2.imread(img_path)
+                drawing_annotations(img)
+                if is_hidden == 1:
+                    text_to_write = f"Bounding Box Mode - Hidden - {object_id}"
+                elif bbox_type == "feces":
+                    text_to_write = f"Bounding Box Mode - Feces"
+                elif bbox_type == "normal":
+                    text_to_write = f"Bounding Box Mode - {object_id}"
+                
+      
+                show_image()
+
+            if pose_mode ==  True:
+            
+                img = cv2.imread(img_path)
+                drawing_annotations(img)
+
+                pose_mode_text = f"Pose Mode - {object_id}"
+                if pose_type:
+                    pose_mode_text = f"Pose Mode - {pose_type.capitalize()} - {object_id}"
+                    annotation_id = get_id(ANNOTATION_FILES, "annotations")
+                    info = {
+                        "images": {
+                            "id": img_id,
+                            "file_name": img_path,
+                            "image_height": IMAGE_HEIGHT,
+                            "image_width": IMAGE_WIDTH
+                        },
+                        "annotation": {
+                            "id": annotation_id,
+                            "keypoints": [],
+                            "image_id": img_id,
+                            "object_id": object_id,
+                            "iscrowd": 0,
+                            "type": "pose",
+                            "conf": 1,
+                            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        }
+                    }
+                    save_annotations_to_json(info, "pose")
+
+                text_to_write = pose_mode_text
+                show_image()
+            
+
+        
+        if bbox_mode:
+        
+            bbox_options = {
+                ord('f'): ("feces", "Feces"),
+                ord('h'): ("normal", "Hidden")
+            }
+
+            for keybind, (bbox_label, mode_message) in bbox_options.items():
+                if key == keybind:
+                    img = cv2.imread(img_path)
+                    drawing_annotations(img)
+                    text_to_write = f"Bounding Box Mode - {mode_message} - {object_id}"
+                    
+                    show_image()
+                
+                    is_hidden = 1 if bbox_label == "normal" else 0
+                    bbox_type = bbox_label.lower()
+                    cv2.setMouseCallback(img_name, drawing_bbox)
+                
+
+        elif pose_mode:
+
+            pose_options = {
+            ord('1'): ("Head"),
+            ord('2'): ("Tail"),
+            ord('3'): ("Neck")
+        }
+
+            for keybind, p_label in pose_options.items():
+                if key == keybind:
+                    img = cv2.imread(img_path)
+                    drawing_annotations(img)
+                    text_to_write =   f"Pose Mode - {p_label} - {object_id}"
+                    
+                    show_image()
+                    pose_type = p_label.lower()
+                    cv2.setMouseCallback(img_name, drawing_pose)
+                    
+    
+def cleaning(video_extraction_dir):
+    for annotation_file in ANNOTATION_FILES:
+        with open(video_extraction_dir + annotation_file, 'r') as f:
+            data = json.load(f)
+
+        if len(data["images"]) == 0:
+            continue
+
+        annotated_image_ids = {annotation["image_id"] for annotation in data["annotations"]}
+
+        
+
+
+        data["images"] = [image_data for image_data in data["images"] if image_data["id"] in annotated_image_ids]
+        if annotation_file == "/pose_annotations.json":
+            data["annotations"] = [annotation_data for annotation_data in data["annotations"] if annotation_data["keypoints"]]
+        
+        with open(video_extraction_dir + annotation_file, 'w') as f:
+            json.dump(data, f, indent=4)
+        
+        return annotated_image_ids
 
 
 if __name__ == "__main__":
@@ -507,32 +908,56 @@ if __name__ == "__main__":
     textSizeWidth, textSizeHeight = textSize
 
 
-    click_count = 0
-    start_x, start_y = 0, 0
-
+ 
+ 
     MODEL_DIR, video_name, video_extraction_dir = extract_frames()
-
     IMAGE_DIR = "used_videos/" + video_name.split(".")[0] + "/extracted_frames/"
-    if MODEL_DIR == None:
+
+
+    if MODEL_DIR == None or IMAGE_DIR == None:
+        print("A selected file/folder was empty.")
         exit()
+
+    for annotation_file in ANNOTATION_FILES:
+        if not os.path.exists(video_extraction_dir + annotation_file):
+            json_content = {"images": [], "annotations": []}
+            
+            with open(video_extraction_dir + annotation_file, 'w') as f:
+                json.dump(json_content, f, indent=4)
 
     print("CUDA available?: ", torch.cuda.is_available())
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model = YOLO(MODEL_DIR)
     model.to(device)
 
-    click_count = 0
+
     img_num = 0
     imgs = os.listdir(IMAGE_DIR)
-    bbox_mode = False
-    pose_mode = False
     already_passed = False
     object_id = 1
+    annotations_exists = False
+    model_detecting = "On"
+    for annotation_file in ANNOTATION_FILES:
+        with open(video_extraction_dir + annotation_file, 'r') as f:
+            data = json.load(f)
+
+        if data["annotations"]:
+            annotations_exists = True
+            break
+
+    # Only execute the Tkinter code if annotations exist
+    if annotations_exists:
+        window = Tk()
+        window.attributes('-topmost', True)
+        window.withdraw()
+        result = messagebox.askquestion("Continue to next image?", "Do you want to continue your work on the image following the last annotated image?")
+        window.destroy()
+    
 
     while img_num < len(imgs):
         
         is_hidden = 0
-        annotation_exists = False
+        annotations_exists = False
         annotated_image_ids = set()
         img_num = int(img_num)
         img_path = os.path.join(IMAGE_DIR, imgs[int(img_num)])
@@ -540,352 +965,41 @@ if __name__ == "__main__":
         img = cv2.imread(img_path)
 
         IMAGE_HEIGHT, IMAGE_WIDTH = img.shape[:2]
-        found = False
-        for annotation_file in ANNOTATION_FILES:
-            
-    
-            if not os.path.exists(video_extraction_dir + annotation_file):
-                json_content = {"images":[], "annotations":[]}
-                
-                with open(video_extraction_dir + annotation_file, 'w') as f:
-                    json.dump(json_content, f, indent=4)
-       
-            with open(video_extraction_dir + annotation_file, 'r') as f:
-                data = json.load(f)
-                
-                
-            for annotation in data["annotations"]:
-                annotated_image_ids.add(annotation["image_id"])
+      
 
-         
-            for image_data in data["images"]:
-                if image_data["file_name"] == img_path:
-                    found = True
-                    img_id = image_data["id"]
-            
-
-        if not found:
-            img_id = get_id(ANNOTATION_FILES, "images")
+        annotated_image_ids = cleaning(video_extraction_dir)
 
         if already_passed == False:
             for annotation_file in ANNOTATION_FILES:
                 with open(video_extraction_dir + annotation_file, 'r') as f:
                     data = json.load(f)
+                
+                if len(data["images"]) == 0:
+                    break
 
                 for image_data in data["images"]:
                     if image_data["file_name"] == img_path:
                        
                         if image_data["id"] in annotated_image_ids:
-                            annotation_exists = True
+                            annotations_exists = True
                             break
-
-        if annotation_exists == False:
-            is_detected = False
-
-            with open(video_extraction_dir + "/bbox_annotations.json", 'r') as f:
-                data = json.load(f)
-
-                for annotation in data["annotations"]:
-                    if annotation["image_id"] == img_id:
-                        if annotation["type"] == "detected_bbox":
-                            is_detected = True
-                            break
-
-            if is_detected == False:
-                bbox_values = model.predict(img_path, conf=CONF_THRESHOLD)[0].boxes
-                num_of_objects = len(bbox_values.conf)
-                conf_list = []
-                for i in range(num_of_objects):
-                    conf = bbox_values.conf[i].item()
-                    conf_list.append(conf)
-                    pred_x1, pred_y1, pred_x2, pred_y2 = map(int, bbox_values.xyxy[i].tolist())
-
-                    annotation_id = get_id(ANNOTATION_FILES, "annotations")
-                    
-                    info = {
-                        "images": {
-                            "id": img_id,
-                            "file_name": img_path,
-                            "image_height": IMAGE_HEIGHT,
-                            "image_width": IMAGE_WIDTH
-                        },
-                        "annotation": {
-                            "id": annotation_id,
-                            "bbox": [pred_x1, pred_y1, pred_x2, pred_y2],
-                            "image_id":img_id,
-                            "object_id":object_id,
-                            "iscrowd": 0,
-                            "area": (pred_y2 - pred_y1) * (pred_x2 - pred_x1),
-                            "type": "detected_bbox",
-                            "conf": conf,
-                            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        }
-                    }
-                    save_annotations_to_json(info, "bbox")
-                    annotation_id += 1
-                
-            breakout = False
-            drawing_annotations(img)
-            show_image()
-
-            while True:
-                key = cv2.waitKey(1)
-                if key == 27 or cv2.getWindowProperty(img_name, cv2.WND_PROP_VISIBLE) < 1: # "Escape": Exits the program 
-
-
-                    breakout = True
-                    break
-                
-                elif key == ord('r'): # "R": Begins retraining the model with the annotations a user chooses
-                    retrain()
-                    breakout = True
-                    break
-
-                elif key == ord('v'): # "V": Making video of annotated images belonging to a video
-            
-                    make_video()
-
-                elif key == ord('b'): # "B": Drawing bounding box annotations 
-                    if bbox_mode == False: 
-                        bbox_mode = True
-                        click_count = 0
-                        img = cv2.imread(img_path)
-                        drawing_annotations(img)
-                        cv2.putText(img, f"Bounding Box Mode - {object_id}", (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
-                        
-                        show_image()
-                        cv2.setMouseCallback(img_name, drawing_bbox)  
-                    
-                        pose_mode = False
-                        bbox_type = "normal"
-
-                    else:
-                        bbox_mode = False
-                        bbox_type = "normal"
-                        is_hidden = 0
-                        img = cv2.imread(img_path)
-                        drawing_annotations(img)
-                        show_image()
-                        cv2.setMouseCallback(img_name, dummy_function)
-                
-                elif key == ord('p'): # "P": Drawing pose annotations
-                    if pose_mode == False:
-                        pose_mode = True
-                        click_count = 0
-                        img = cv2.imread(img_path)
-                        drawing_annotations(img)
-                        cv2.putText(img, f"Pose Mode - {object_id}", (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
-                        show_image()
-                      
-                        bbox_mode = False
-                        pose_type = ""
-                        annotation_id = get_id(ANNOTATION_FILES, "annotations")
-            
-                        info = {
-                            "images": {
-                                "id": img_id,
-                                "file_name": img_path,
-                                "image_height": IMAGE_HEIGHT,
-                                "image_width": IMAGE_WIDTH
-                            },
-                            "annotation": {
-                                "id": annotation_id,
-                                "keypoints": [],
-                                "image_id":img_id,
-                                "object_id":object_id,
-                                "iscrowd": 0,
-                                "type": "pose",
-                                "conf": 1,
-                                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            }
-                        }
-                        save_annotations_to_json(info, "pose")
-                        cv2.setMouseCallback(img_name, dummy_function)
-                    else:
-                        pose_mode = False
-                        img = cv2.imread(img_path)
-                        drawing_annotations(img)
-                        show_image()
-                        cv2.setMouseCallback(img_name, dummy_function)
-
-
-                elif key == 13: # "Enter": Go to the next image
-                    cv2.destroyAllWindows()
-                    pose_mode = False
-                    bbox_mode = False
-                    already_passed = False
-                    object_id = 1
-                    break
-
-                elif key == 8: # "Backspace": Go back to previous image  
-                    handle_prev_img()
-                    break
-
-                elif key == ord('d'): # "D": Delete all annotations for the current image
-                    for annotation_file in ANNOTATION_FILES:
-                        with open(video_extraction_dir + annotation_file, 'r') as f:
-                            data = json.load(f)
-                        data["annotations"] = [annotation for annotation in data["annotations"] if annotation["image_id"] != img_id]
-            
-                        with open(video_extraction_dir + annotation_file, 'w') as f:
-                            json.dump(data, f, indent=4)
-
-                    img = cv2.imread(img_path)
-                    show_image()
-                    cv2.setMouseCallback(img_name, dummy_function)
-                    bbox_mode = False
-                    pose_mode = False
-                    object_id = 1
-
-                elif key == 26: # "Ctrl + Z": Undo most recent annotation, if are none annotations go to previous image 
-                    is_empty = True
-
-                    for annotation_file in ANNOTATION_FILES:
-                        with open(video_extraction_dir + annotation_file, 'r') as f:
-                            data = json.load(f)
-                        
-                        if any(annotation["image_id"] == img_id for annotation in data["annotations"]):
-                            is_empty = False
-                            break
-                    
-                    if is_empty:
-                        handle_prev_img()
-                        object_id = 1
-                        break
-
-                    latest_time = max(datetime.strptime(annotation["time"], "%Y-%m-%d %H:%M:%S") for annotation in data["annotations"] if annotation["image_id"] == img_id)
-                    
-                    for annotation_file in ANNOTATION_FILES:
-                        with open(video_extraction_dir + annotation_file, 'r') as f:
-                            data = json.load(f)
-                        
-                        for annotation in data["annotations"]:
-                            if annotation["time"] == latest_time.strftime("%Y-%m-%d %H:%M:%S"):
-                                object_id = annotation["object_id"]
-                                if annotation["type"] == "pose":
-                                    if annotation["keypoints"]:
-                                        annotation["keypoints"].pop()
-                                    else:
-                                        data["annotations"].remove(annotation)
-                                else:
-                                    data["annotations"].remove(annotation)
-                                break
-                        
-                        with open(video_extraction_dir + annotation_file, 'w') as f:
-                            json.dump(data, f, indent=4)
-                    
-                    img = cv2.imread(img_path)
-                    drawing_annotations(img)
-
-                    mode_text = ""
-                    if bbox_mode:
-                        mode_text = "Bounding Box Mode - "
-                        if is_hidden:
-                            mode_text += "Hidden - "
-                        elif bbox_type == "feces":
-                            mode_text += "Feces - "
-                    elif pose_mode:
-                        mode_text = "Pose Mode - "
-                        if pose_type:
-                            mode_text += f"{pose_type.capitalize()} - "
-                    mode_text += str(object_id)
-
-                    cv2.putText(img, mode_text, (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
-                    already_passed = False
-                    drawing_annotations(img)
-                    show_image()
-                    
-                elif key == ord('n'): # "N": Next object ID
-                    object_id += 1
-
-                    if bbox_mode == True:
-                        img = cv2.imread(img_path)
-                        drawing_annotations(img)
-                        if is_hidden == 1:
-                            cv2.putText(img, f"Bounding Box Mode - Hidden - {object_id}", (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
-                        elif bbox_type == "feces":
-                            cv2.putText(img, f"Bounding Box Mode - Feces - {object_id}", (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
-                        elif bbox_type == "normal":
-                            cv2.putText(img, f"Bounding Box Mode - {object_id}", (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
-                        
-                        show_image()
-
-                    if pose_mode ==  True:
-                       
-                        img = cv2.imread(img_path)
-                        drawing_annotations(img)
-
-                        pose_mode_text = f"Pose Mode - {object_id}"
-                        if pose_type:
-                            pose_mode_text = f"Pose Mode - {pose_type.capitalize()} - {object_id}"
-                            annotation_id = get_id(ANNOTATION_FILES, "annotations")
-                            info = {
-                                "images": {
-                                    "id": img_id,
-                                    "file_name": img_path,
-                                    "image_height": IMAGE_HEIGHT,
-                                    "image_width": IMAGE_WIDTH
-                                },
-                                "annotation": {
-                                    "id": annotation_id,
-                                    "keypoints": [],
-                                    "image_id": img_id,
-                                    "object_id": object_id,
-                                    "iscrowd": 0,
-                                    "type": "pose",
-                                    "conf": 1,
-                                    "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                                }
-                            }
-                            save_annotations_to_json(info, "pose")
-
-                        cv2.putText(img, pose_mode_text, (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
-                        show_image()
-                    
-
-                
-                if bbox_mode:
-                
-                    bbox_options = {
-                        ord('f'): ("feces", "Feces"),
-                        ord('h'): ("normal", "Hidden")
-                    }
-
-                    for keybind, (bbox_label, mode_message) in bbox_options.items():
-                        if key == keybind:
-                            img = cv2.imread(img_path)
-                            drawing_annotations(img)
-                            cv2.putText(img, f"Bounding Box Mode - {mode_message} - {object_id}", (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
-                            show_image()
-                         
-                            is_hidden = 1 if bbox_label == "normal" else 0
-                            bbox_type = bbox_label.lower()
-                            cv2.setMouseCallback(img_name, drawing_bbox)
-                          
-
-                elif pose_mode:
         
-                    pose_options = {
-                    ord('1'): ("Head"),
-                    ord('2'): ("Tail"),
-                    ord('3'): ("Neck")
-                }
+        if annotations_exists == False:
+            if result == "yes":
+                img_num -= 1
+                img_path = os.path.join(IMAGE_DIR, imgs[int(img_num)])
+                img_name = os.path.basename(img_path)
+                annotating(img_path, img_name, video_extraction_dir)
+            else:
+                annotating(img_path, img_name, video_extraction_dir)
+            
+        else:
+            if result == "no":
+                annotating(img_path, img_name, video_extraction_dir)
+            else:
+                pass
 
-                    for keybind, p_label in pose_options.items():
-                        if key == keybind:
-                            img = cv2.imread(img_path)
-                            drawing_annotations(img)
-                            cv2.putText(img, f"Pose Mode - {p_label} - {object_id}", (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
-                            show_image()
-                            pose_type = p_label.lower()
-                            cv2.setMouseCallback(img_name, drawing_pose)
-                            
-                    
-
-            if breakout:
-                
-                
-                break
         
         img_num += 1
+
     cv2.destroyAllWindows()
