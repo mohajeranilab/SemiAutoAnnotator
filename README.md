@@ -17,11 +17,11 @@ Run the annotation_labeler.py file, it will give you two file explorer windows t
 "In the 'used_videos/' directory, a folder will be created for each selected video, containing the video file itself along with subfolders for extracted frames and JSON annotations. The structure will look like this:
 used_videos/
 └── video_name_folder/
-    ├── extracted_frames/
-    │   └── img_0.jpg
-    ├── video_name.mp4
-    ├── bbox_annotations.json
-    └── pose_annotations.json
+├── extracted_frames/
+└── img_0.jpg
+├── video_name.mp4
+├── bbox_annotations.json
+└── pose_annotations.json
 
 The annotations created in the json files are very similar to the COCO dataset format. 
 
