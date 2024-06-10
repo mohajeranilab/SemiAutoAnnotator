@@ -1,4 +1,4 @@
-<!-- # SemiAutoAnnotator
+# SemiAutoAnnotator
 ## Description
 
 This annotation labeler uses the concept of active learning.
@@ -15,14 +15,14 @@ The user will start annotating images but will be assisted by a model that provi
 Run the annotation_labeler.py file, it will give you two file explorer windows to select the video file you want to annotate (it will extract frames for you), and the model/weights file to help you annotate
 
 "In the 'used_videos/' directory, a folder will be created for each selected video, containing the video file itself along with subfolders for extracted frames and JSON annotations. The structure will look like this:
+```plaintext
 used_videos/
 └── video_name_folder/
-├── extracted_frames/
-└── img_0.jpg
-├── video_name.mp4
-├── bbox_annotations.json
-└── pose_annotations.json
-
+    ├── extracted_frames/
+    │   └── img_0.jpg
+    ├── video_name.mp4
+    ├── bbox_annotations/
+    └── pose_annotations.json
 The annotations created in the json files are very similar to the COCO dataset format. 
 
 Once retraining starts, another folder will be created called labeler_dataset/, it contains further subfolders with images and labels in YOLO training format. The structure will look lke this:
@@ -39,27 +39,4 @@ labeler_dataset/
         └── img_1.txt
     ├── val/
         └── img_2.txt
-    -->
-
-#!/bin/bash
-
-#File: tree-md
-
-tree=$(tree -tf --noreport -I '*~' --charset ascii $1 |
-       sed -e 's/| \+/  /g' -e 's/[|`]-\+/ */g' -e 's:\(* \)\(\(.*/\)\([^/]\+\)\):\1[\4](\2):g')
-
-printf "# Project tree\n\n${tree}"
-# Example:
-# Original tree command:
-$ tree
-.
-├── dir1
-│   ├── file11.ext
-│   └── file12.ext
-├── dir2
-│   ├── file21.ext
-│   ├── file22.ext
-│   └── file23.ext
-├── dir3
-├── file_in_root.ext
-└── README.md
+   
