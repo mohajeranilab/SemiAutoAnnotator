@@ -28,6 +28,7 @@ used_videos/
 The annotations created in the json files are very similar to the COCO dataset format. 
 
 Once retraining starts, another folder will be created called labeler_dataset/, it contains further subfolders with images and labels in YOLO training format. The structure will look like this:
+```plaintext
 labeler_dataset/
 └── images/
     └── train/
@@ -41,4 +42,4 @@ labeler_dataset/
         └── img_1.txt
     ├── val/
         └── img_2.txt
-   
+```
