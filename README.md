@@ -18,7 +18,7 @@ Run the annotation_labeler.py file, it will give you two file explorer windows t
 used_videos/
 └── video_name_folder/
     ├── extracted_frames/
-        └── img_0.jpg
+    │   └── img_0.jpg
     ├── video_name.mp4
     ├── bbox_annotations.json
     └── pose_annotations.json
