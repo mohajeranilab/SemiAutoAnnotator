@@ -6,6 +6,7 @@ The user will start annotating images but will be assisted by a model that provi
 
 ## Installation
 1. Clone the repository:
+    ```bash
     git clone https://github.com/mohajeranilab/SemiAutoAnnotator.git
     
 2. Install depedences:
@@ -19,13 +20,14 @@ Run the annotation_labeler.py file, it will give you two file explorer windows t
 used_videos/
 └── video_name_folder/
     ├── extracted_frames/
-    │   └── img_0.jpg
+        └── img_0.jpg
     ├── video_name.mp4
-    ├── bbox_annotations/
+    ├── bbox_annotations.json
     └── pose_annotations.json
+```
 The annotations created in the json files are very similar to the COCO dataset format. 
 
-Once retraining starts, another folder will be created called labeler_dataset/, it contains further subfolders with images and labels in YOLO training format. The structure will look lke this:
+Once retraining starts, another folder will be created called labeler_dataset/, it contains further subfolders with images and labels in YOLO training format. The structure will look like this:
 labeler_dataset/
 └── images/
     └── train/
