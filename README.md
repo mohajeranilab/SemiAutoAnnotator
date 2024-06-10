@@ -1,4 +1,4 @@
-# SemiAutoAnnotator
+<!-- # SemiAutoAnnotator
 ## Description
 
 This annotation labeler uses the concept of active learning.
@@ -39,4 +39,27 @@ labeler_dataset/
         └── img_1.txt
     ├── val/
         └── img_2.txt
-   
+    -->
+
+#!/bin/bash
+
+#File: tree-md
+
+tree=$(tree -tf --noreport -I '*~' --charset ascii $1 |
+       sed -e 's/| \+/  /g' -e 's/[|`]-\+/ */g' -e 's:\(* \)\(\(.*/\)\([^/]\+\)\):\1[\4](\2):g')
+
+printf "# Project tree\n\n${tree}"
+# Example:
+# Original tree command:
+$ tree
+.
+├── dir1
+│   ├── file11.ext
+│   └── file12.ext
+├── dir2
+│   ├── file21.ext
+│   ├── file22.ext
+│   └── file23.ext
+├── dir3
+├── file_in_root.ext
+└── README.md
