@@ -77,6 +77,7 @@ def drawing_annotations(img):
             if annotation["image_id"] == img_id:
                 if annotation_type == "bbox":
                     img = cv2.rectangle(img, (annotation["bbox"][0], annotation["bbox"][1]), (annotation["bbox"][2], annotation["bbox"][3]), ANNOTATION_COLORS[annotation["object_id"]], 2)
+                    img = cv2.putText(img, str(annotation["object_id"]), (annotation["bbox"][2] - 10, annotation["bbox"][3]), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
                     if annotation["type"] == "detected bounding_box":
                         cv2.putText(img, f"{annotation['conf']:.2f}", (annotation["bbox"][0], annotation["bbox"][3]), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
                 elif annotation_type == "pose":
@@ -321,8 +322,53 @@ Press Cancel or exit out of the file explorer when finished choosing videos.
     sys.exit()
 
 
+
+def add_num_to_detections(event, x, y, flags, param):
+    global keep_processing
+
+    with open(video_extraction_dir + "/bbox_annotations.json", 'r') as f:
+        data = json.load(f)
+    # Update the annotations to reflect the new object ID
+        for annotation in data["annotations"]:
+            if annotation["image_id"] == img_id and annotation["object_id"] != 0:
+                
+                keep_processing = False  # Set the flag to False to break the loop
+     
+                return  # Exit the for loop
+
+    if event == cv2.EVENT_LBUTTONDOWN:
+
+        center_x, center_y = x, y
+     
+        detected_annotations = [] 
+        for annotation in data["annotations"]:
+      
+            if annotation["image_id"] == img_id and annotation["type"] == "detected bounding_box":
+                detected_annotations.append(annotation["bbox"])
+        distance_to_point = float('inf')
+        for detected_annotation in detected_annotations:
+        
+            # Midpoint coordinates
+            midpoint = ((detected_annotation[0] + detected_annotation[2]) / 2, (detected_annotation[1] + detected_annotation[3]) / 2)
+            
+            if distance_to_point > euclidean_distance(midpoint, (center_x, center_y)):
+                distance_to_point = euclidean_distance
+                corresponding_bbox = detected_annotation
+        
+        for annotation in data["annotations"]:
+            if annotation["image_id"] == img_id and annotation["type"] == "detected bounding_box" and annotation["bbox"] == corresponding_bbox:
+                annotation["object_id"] = object_id
+
+        with open(video_extraction_dir + "/bbox_annotations.json", 'w') as f:
+            json.dump(data, f, indent=4)
+
+
+        # creating a training loop 
+        # explain the user how to use everything 
+
+
 def annotating(img_path, img_name, video_extraction_dir):
-    global already_passed, bbox_type, pose_type, bbox_mode, pose_mode, object_id, img, is_hidden, annotation_id, img_id, click_count, model_detecting, text_to_write
+    global already_passed, bbox_type, pose_type, bbox_mode, pose_mode, object_id, img, is_hidden, annotation_id, img_id, click_count, model_detecting, text_to_write, keep_processing
     img = cv2.imread(img_path)
     bbox_mode = False
     pose_mode = False
@@ -377,7 +423,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                     "id": annotation_id,
                     "bbox": [pred_x1, pred_y1, pred_x2, pred_y2],
                     "image_id":img_id,
-                    "object_id":object_id,
+                    "object_id":0,
                     "iscrowd": 0,
                     "area": (pred_y2 - pred_y1) * (pred_x2 - pred_x1),
                     "type": "detected bounding_box",
@@ -387,8 +433,38 @@ def annotating(img_path, img_name, video_extraction_dir):
             }
             save_to_json(info, "bbox", video_extraction_dir, ANNOTATION_FILES)
             annotation_id += 1
-        
+        img = cv2.imread(img_path)
+        #object_id = 0
+        drawing_annotations(img)
+        #object_id = 1
+      
+    
+        text_to_write = f"Click middle of detected box with correct ID - {object_id}"
+        show_image()
+        with open(video_extraction_dir + "/bbox_annotations.json", 'r') as f:
+            data = json.load(f)
+        keep_processing = True
+        while keep_processing and any(annotation["object_id"] == 0 for annotation in data["annotations"] if annotation["image_id"] == img_id):
+            cv2.setMouseCallback(img_name, add_num_to_detections)
+            print(keep_processing)
+            key = cv2.waitKey(1)
+            if key == ord('n'): # "N": Next object ID
+                object_id += 1
+                #temp_id = 0 
+                #object_id, temp_id = temp_id, object_id
+                img = cv2.imread(img_path)
+
+                drawing_annotations(img)
+                #object_id, temp_id = temp_id, object_id
+                text_to_write = f"Click middle of detected box with correct ID - {object_id}"
+                show_image()
+
+            
+            if keep_processing == False:
+                break
+
     breakout = False
+    img = cv2.imread(img_path)
     drawing_annotations(img)
     text_to_write = " "
     show_image()
