@@ -77,7 +77,7 @@ def drawing_annotations(img):
             if annotation["image_id"] == img_id:
                 if annotation_type == "bbox":
                     img = cv2.rectangle(img, (annotation["bbox"][0], annotation["bbox"][1]), (annotation["bbox"][2], annotation["bbox"][3]), ANNOTATION_COLORS[annotation["object_id"]], 2)
-                    if annotation["type"] == "detected_bbox":
+                    if annotation["type"] == "detected bounding_box":
                         cv2.putText(img, f"{annotation['conf']:.2f}", (annotation["bbox"][0], annotation["bbox"][3]), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
                 elif annotation_type == "pose":
                     for keypoint_annotation in annotation["keypoints"]: 
@@ -351,7 +351,7 @@ def annotating(img_path, img_name, video_extraction_dir):
 
         for annotation in data["annotations"]:
             if annotation["image_id"] == img_id:
-                if annotation["type"] == "detected_bbox":
+                if annotation["type"] == "detected bounding_box":
                     is_detected = True
                     break
 
@@ -380,7 +380,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                     "object_id":object_id,
                     "iscrowd": 0,
                     "area": (pred_y2 - pred_y1) * (pred_x2 - pred_x1),
-                    "type": "detected_bbox",
+                    "type": "detected bounding_box",
                     "conf": conf,
                     "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
