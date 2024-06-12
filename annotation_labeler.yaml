@@ -1,6 +1,6 @@
 path: ..
-train: labeler_dataset\images\train
-val: labeler_dataset\images\val 
+train: SemiAutoAnnotator\labeler_dataset\images\train
+val: SemiAutoAnnotator\labeler_dataset\images\val 
 # test:  # test images (optional)
 
 # Classes
