@@ -2,7 +2,7 @@
 ## Description
 
 This annotation labeler uses the concept of active learning.
-The user will start annotating images but will be assisted by a model that provides annotations. After significant annotations are made, the user can then be prompted to retrain the model that was helping the user annotate to improve its accuracy. This system drastically reduces the amount of time a user spends annotating. 
+The user will start annotating images but will be assisted by a model that provides annotations. After significant annotations are made, the user can then be prompted to retrain the model that was helping the user annotate to improve its performance. This system drastically reduces the amount of time a user spends annotating. 
 
 ## Installation
 1. Clone the repository:
@@ -10,6 +10,7 @@ The user will start annotating images but will be assisted by a model that provi
     git clone https://github.com/mohajeranilab/SemiAutoAnnotator.git
     
 2. Install depedences:
+    ```bash
     pip install -r requirements.txt
 
 ## Usage
@@ -43,3 +44,4 @@ labeler_dataset/
     ├── val/
         └── img_2.txt
 ```
+
