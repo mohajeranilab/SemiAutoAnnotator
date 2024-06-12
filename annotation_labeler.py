@@ -434,9 +434,9 @@ def annotating(img_path, img_name, video_extraction_dir):
             save_to_json(info, "bbox", video_extraction_dir, ANNOTATION_FILES)
             annotation_id += 1
         img = cv2.imread(img_path)
-        #object_id = 0
+
         drawing_annotations(img)
-        #object_id = 1
+
       
     
         text_to_write = f"Click middle of detected box with correct ID - {object_id}"
@@ -446,16 +446,15 @@ def annotating(img_path, img_name, video_extraction_dir):
         keep_processing = True
         while keep_processing and any(annotation["object_id"] == 0 for annotation in data["annotations"] if annotation["image_id"] == img_id):
             cv2.setMouseCallback(img_name, add_num_to_detections)
-            print(keep_processing)
+        
             key = cv2.waitKey(1)
             if key == ord('n'): # "N": Next object ID
                 object_id += 1
-                #temp_id = 0 
-                #object_id, temp_id = temp_id, object_id
+          
                 img = cv2.imread(img_path)
 
                 drawing_annotations(img)
-                #object_id, temp_id = temp_id, object_id
+              
                 text_to_write = f"Click middle of detected box with correct ID - {object_id}"
                 show_image()
 
