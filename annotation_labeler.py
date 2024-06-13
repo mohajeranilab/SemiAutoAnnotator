@@ -1,8 +1,6 @@
 import cv2
 import os
 from pathlib import Path
-import torch
-from ultralytics import YOLO 
 import numpy as np
 import random
 import json
@@ -10,6 +8,9 @@ from datetime import datetime
 from tkinter import Tk, filedialog, messagebox
 import shutil
 import sys
+
+from ultralytics import YOLO 
+import torch
 
 from utils import *
 from file_operations import *
@@ -34,7 +35,7 @@ def show_image():
     cv2.namedWindow(img_name, cv2.WINDOW_NORMAL)  
     cv2.resizeWindow(img_name, 700, 500)  
     
-    cv2.moveWindow(img_name, 900, 320)
+    cv2.moveWindow(img_name, 600, 320)
     cv2.putText(img, text_to_write, (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
     cv2.putText(img, f"Model: {model_detecting}", (int(IMAGE_WIDTH * 0.75), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
     cv2.imshow(img_name, img)
