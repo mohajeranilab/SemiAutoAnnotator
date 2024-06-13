@@ -13,15 +13,15 @@ import sys
 
 from utils import *
 from file_operations import *
-# from clustering import *
+#from clustering import *
 
 def dummy_function(event, x, y, flags, param):
     pass
 
 
-# def clustering_data(image_dir, model_dir):
-#     main(Path(image_dir), model_dir)
-#     pass
+#def clustering_data(image_dir, model_dir):
+ #   main(Path(image_dir), model_dir)
+  #  pass
 
 
 def show_image(): 
@@ -458,6 +458,25 @@ def annotating(img_path, img_name, video_extraction_dir):
                 text_to_write = f"Click middle of detected box with correct ID - {object_id}"
                 show_image()
 
+            if key == ord('d'): # "D": Delete annotations for current image
+                object_id = 1 
+               
+                for annotation_file in ANNOTATION_FILES:
+                    with open(video_extraction_dir + annotation_file, 'r') as f:
+                        data = json.load(f)
+                    data["annotations"] = [annotation for annotation in data["annotations"] if annotation["image_id"] != img_id]
+        
+                    with open(video_extraction_dir + annotation_file, 'w') as f:
+                        json.dump(data, f, indent=4)
+
+                img = cv2.imread(img_path)
+                text_to_write = " "
+                show_image()
+                cv2.setMouseCallback(img_name, dummy_function)
+                bbox_mode = False
+                pose_mode = False
+                object_id = 1
+                continue
             
             if keep_processing == False:
                 break
