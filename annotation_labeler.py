@@ -379,8 +379,8 @@ def annotating(img_path, img_name, video_extraction_dir):
     
     
    
-    model_detecting = "On" if MODEL_DIR != "" else "Off"
-    model_detecting = "On" if not isinstance(MODEL_DIR, tuple) else "Off"
+    model_detecting = "On" if MODEL_DIR != "" and MODEL_DIR != None else "Off"
+    #model_detecting = "On" if not isinstance(MODEL_DIR, tuple) else "Off"
  
     for annotation_file in ANNOTATION_FILES:
 
@@ -403,7 +403,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                     is_detected = True
                     break
 
-    if is_detected == False and model_detecting == "On" and MODEL_DIR != "":
+    if is_detected == False and model_detecting == "On":
         bbox_values = model.predict(img_path, conf=CONF_THRESHOLD)[0].boxes
         num_of_objects = len(bbox_values.conf)
         conf_list = []
@@ -878,7 +878,7 @@ if __name__ == "__main__":
                 json.dump(json_content, f, indent=4)
     print(MODEL_DIR)
     print(type(MODEL_DIR))
-    if not isinstance(MODEL_DIR, tuple):
+    if not isinstance(MODEL_DIR, tuple) or MODEL_DIR != "" and MODEL_DIR != None:
         print("CUDA available?: ", torch.cuda.is_available())
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         model = YOLO(MODEL_DIR)
