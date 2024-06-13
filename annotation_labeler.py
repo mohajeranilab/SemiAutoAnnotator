@@ -245,13 +245,12 @@ def retrain():
 
     # Select all the video files to train, it will look inside the video folders (if they exist) and retrieve the images and their annotations
     video_paths = []
-   
     print("""\nSelect video files you want to use to train. These video files must have been annotated previously and annotations saved in their directory.\n
 Press Cancel or exit out of the file explorer when finished choosing videos.
     """)
     while True:
         video_path = filedialog.askdirectory(
-            initialdir="/",
+            initialdir="used_videos/",
             title="SELECT VIDEO FOLDERS TO TRAIN"
         )
 
