@@ -877,7 +877,7 @@ if __name__ == "__main__":
                 json.dump(json_content, f, indent=4)
     print(MODEL_DIR)
     print(type(MODEL_DIR))
-    if MODEL_DIR != "" or MODEL_DIR != None or MODEL_DIR != ():
+    if MODEL_DIR != "" or MODEL_DIR != None or not isinstance(MODEL_DIR, tuple):
         print("CUDA available?: ", torch.cuda.is_available())
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         model = YOLO(MODEL_DIR)
