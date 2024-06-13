@@ -8,7 +8,7 @@ from datetime import datetime
 from tkinter import Tk, filedialog, messagebox
 import shutil
 import sys
-
+import screeninfo  # Install using `pip install screeninfo`
 from ultralytics import YOLO 
 import torch
 
@@ -34,8 +34,13 @@ def show_image():
 
     cv2.namedWindow(img_name, cv2.WINDOW_NORMAL)  
     cv2.resizeWindow(img_name, 700, 500)  
-    
-    cv2.moveWindow(img_name, 600, 320)
+
+    screen = screeninfo.get_monitors()[0]  # Assuming you want the primary monitor
+    width, height = screen.width, screen.height
+    screen_center_x = int((width - 700) / 2)
+    screen_center_y = int((height - 500)/ 2)
+
+    cv2.moveWindow(img_name, screen_center_x, screen_center_y)
     cv2.putText(img, text_to_write, (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
     cv2.putText(img, f"Model: {model_detecting}", (int(IMAGE_WIDTH * 0.75), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
     cv2.imshow(img_name, img)
