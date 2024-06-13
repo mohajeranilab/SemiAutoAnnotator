@@ -1,8 +1,9 @@
 # SemiAutoAnnotator
 ## Description
 
-This annotation labeler uses the concept of active learning and transfer learning.
-The user will start annotating images but will be assisted by a model that provides annotations. After significant annotations are made, the user can then be prompted to retrain the model that was helping the user annotate to improve its performance. Whenever it is retrained, it will reuse the current model as the pre-trained weights for training. This system drastically reduces the amount of time a user spends annotating. 
+This annotation labeler uses the concept of active learning and transfer learning to improve the efficiency of the annotation process.
+The user will start annotating images and will be assisted by a model that provides suggested annotations. After significant annotations are made, the user can then be prompted to retrain the assisting model to improve its performance. Each retraining session uses the current model as a base, incorporating its pre-trained weights as a starting point for the retraining. This iterative approach significantly reduces the time required for manual annotation by continuously refining the model's accuracy.
+
 
 ## Installation
 1. Clone the repository:
