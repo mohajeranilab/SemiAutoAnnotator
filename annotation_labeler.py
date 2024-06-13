@@ -13,15 +13,15 @@ import sys
 
 from utils import *
 from file_operations import *
-#from clustering import *
+# from clustering import *
 
 def dummy_function(event, x, y, flags, param):
     pass
 
 
-#def clustering_data(image_dir, model_dir):
- #   main(Path(image_dir), model_dir)
-  #  pass
+# def clustering_data(image_dir, model_dir):
+#    main(Path(image_dir), model_dir)
+#    pass
 
 
 def show_image(): 
@@ -378,7 +378,9 @@ def annotating(img_path, img_name, video_extraction_dir):
     img_id = None
     click_count = 0
     
+    
    
+    model_detecting = "On" if MODEL_DIR != "" else "Off"
  
     for annotation_file in ANNOTATION_FILES:
 
@@ -401,7 +403,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                     is_detected = True
                     break
 
-    if is_detected == False and model_detecting == "On":
+    if is_detected == False and model_detecting == "On" and MODEL_DIR != "":
         bbox_values = model.predict(img_path, conf=CONF_THRESHOLD)[0].boxes
         num_of_objects = len(bbox_values.conf)
         conf_list = []
@@ -865,7 +867,7 @@ if __name__ == "__main__":
     IMAGE_DIR = "used_videos/" + video_name.split(".")[0] + "/extracted_frames/"
 
 
-    assert MODEL_DIR is not None and IMAGE_DIR is not None, "A selected file/folder was empty."
+    assert IMAGE_DIR is not None, "A image folder was empty."
 
 
     for annotation_file in ANNOTATION_FILES:
@@ -874,11 +876,12 @@ if __name__ == "__main__":
             
             with open(video_extraction_dir + annotation_file, 'w') as f:
                 json.dump(json_content, f, indent=4)
-
-    print("CUDA available?: ", torch.cuda.is_available())
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model = YOLO(MODEL_DIR)
-    model.to(device)
+    print(MODEL_DIR)
+    if MODEL_DIR != "":
+        print("CUDA available?: ", torch.cuda.is_available())
+        device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+        model = YOLO(MODEL_DIR)
+        model.to(device)
 
 
     #clustering_data(IMAGE_DIR, MODEL_DIR)
