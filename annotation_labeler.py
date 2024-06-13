@@ -876,7 +876,8 @@ if __name__ == "__main__":
             with open(video_extraction_dir + annotation_file, 'w') as f:
                 json.dump(json_content, f, indent=4)
     print(MODEL_DIR)
-    if MODEL_DIR != "" or MODEL_DIR != None:
+    print(type(MODEL_DIR))
+    if MODEL_DIR != "" or MODEL_DIR != None or MODEL_DIR != ():
         print("CUDA available?: ", torch.cuda.is_available())
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
         model = YOLO(MODEL_DIR)
