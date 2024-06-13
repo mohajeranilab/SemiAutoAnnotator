@@ -473,11 +473,71 @@ def annotating(img_path, img_name, video_extraction_dir):
                 text_to_write = " "
                 show_image()
                 cv2.setMouseCallback(img_name, dummy_function)
-                bbox_mode = False
-                pose_mode = False
-                object_id = 1
-                continue
+                
+                break
+
+            if key == 26:
+                is_empty = True
+
+                for annotation_file in ANNOTATION_FILES:
+                    with open(video_extraction_dir + annotation_file, 'r') as f:
+                        data = json.load(f)
+
+                    if any(annotation["image_id"] == img_id for annotation in data["annotations"]):
+                        is_empty = False
+                        break
+                
+                if is_empty:
+                    handle_prev_img()
+                    object_id = 1
+                    return
+                else:
+                    latest_time = None
+                
+                for annotation_file in ANNOTATION_FILES:
+                    with open(video_extraction_dir + annotation_file, 'r') as f:
+                        data = json.load(f)
+                    
+                    for i, annotation in enumerate(data["annotations"]):
+                        if annotation["image_id"] == img_id:
+                            timestamp = datetime.strptime(annotation["time"], "%Y-%m-%d %H:%M:%S")
+                            if latest_time is None or timestamp > latest_time:
+                                latest_time = timestamp
+                
+
+
+                for annotation_file in ANNOTATION_FILES:
+                    with open(video_extraction_dir + annotation_file, 'r') as f:
+                        data = json.load(f)
+                    
+                    for i in range(len(data["annotations"])):
+                        timestamp = datetime.strptime(data["annotations"][i]["time"], "%Y-%m-%d %H:%M:%S")
+                        if timestamp == latest_time:
+                            object_id = data["annotations"][i]["object_id"]
+                            if data["annotations"][i]["type"] == "pose":
+                                if len(data["annotations"][i]["keypoints"]) > 1:
+                                    data["annotations"][i]["keypoints"].pop()
+                                    break
+                                else:
+                                    
+                                    del data["annotations"][i]
+                                    break
+                            else:
             
+                                del data["annotations"][i]
+                            break
+
+
+                    with open(video_extraction_dir + annotation_file, 'w') as f:
+                        json.dump(data, f, indent=4)
+                
+                img = cv2.imread(img_path)
+                drawing_annotations(img)
+
+
+                text_to_write = " "
+                show_image()
+                break
             if keep_processing == False:
                 break
 
