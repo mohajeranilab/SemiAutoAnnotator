@@ -380,6 +380,7 @@ def annotating(img_path, img_name, video_extraction_dir):
     
    
     model_detecting = "On" if MODEL_DIR != "" else "Off"
+    model_detecting = "On" if not isinstance(MODEL_DIR, tuple) else "Off"
  
     for annotation_file in ANNOTATION_FILES:
 
