@@ -75,7 +75,7 @@ def extract_frames(frame_skip):
         frame_count += frame_skip 
 
     cap.release()
-    print(f"Extracted {extracted_count} frames to 'extracted_frames'")
+    print(f"Extracted {extracted_count} new frames to 'extracted_frames'")
 
     # else:
     #     print(f"Frames already exist at used_videos/{video_name.split('.')[0]}/extracted_frames/. \nIf you want to change how many frames are extracted in the video, make sure to delete the used_videos/{video_name.split('.')[0]}/extracted_frames/ directory")

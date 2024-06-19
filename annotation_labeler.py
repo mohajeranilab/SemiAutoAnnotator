@@ -58,13 +58,6 @@ def handle_prev_img():
     already_passed = True
     click_count = 0
 
-    #     while img_num < len(imgs):
-    #         is_hidden = 0
-    #         annotations_exists = False
-    #         annotated_image_ids = set()
-    #         img_num = int(img_num)
-
-    # imgs = os.listdir(current_dir)
 
     if img_num == 0:
         img_num -= 1
@@ -403,9 +396,7 @@ def annotating(img_path, img_name, video_extraction_dir):
     img_id = None
     click_count = 0
     
-    
-   
-    model_detecting = "On" if MODEL_FILE != "" and MODEL_FILE != None and not isinstance(MODEL_FILE, tuple) else "Off"
+
 
  
     for annotation_file in ANNOTATION_FILES:
@@ -429,7 +420,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                     is_detected = True
                     break
 
-    if is_detected == False and model_detecting == "On":
+    if is_detected == False and MODEL_FILE != "" and MODEL_FILE != None and not isinstance(MODEL_FILE, tuple) and model_detecting == "On":
         bbox_values = model.predict(img_path, conf=CONF_THRESHOLD)[0].boxes
         num_of_objects = len(bbox_values.conf)
         conf_list = []
@@ -879,7 +870,7 @@ if __name__ == "__main__":
     FRAME_SKIP = 50
 
 
-    # creating a list of random annotation colors that are the same throughout different runs 
+    # creating a list of random annotation colors that are- the same throughout different runs 
     seed = 42
     random.seed(seed)
     for _ in range(30):
@@ -968,7 +959,7 @@ if __name__ == "__main__":
             img_num = int(img_num)
             img_path = os.path.join(current_dir, imgs[img_num])
             img_name = os.path.basename(img_path)
-            print(img_name)
+   
             if int(((img_name.split('_'))[-1]).replace('.jpg', '')) % FRAME_SKIP == 0:
 
                 img = cv2.imread(img_path)
