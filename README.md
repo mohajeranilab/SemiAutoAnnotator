@@ -17,6 +17,7 @@ The user will start annotating images and will be assisted by a model that provi
 ## Usage
 Run the annotation_labeler.py file, it will give you two file explorer windows to select the video file you want to annotate (it will extract frames for you), and the model/weights file to help you annotate
 
+If you would like to annotate without a model assisting you, simply press Cancel or Exit out of the file explorer prompting you to choose a model/weights file.
 "In the 'used_videos/' directory, a folder will be created for each selected video, containing the video file itself along with subfolders for extracted frames and JSON annotations. The structure will look like this:
 ```plaintext
 used_videos/
@@ -29,7 +30,7 @@ used_videos/
 ```
 The annotations created in the json files are very similar to the COCO dataset format. 
 
-When the program runs and an image is open, if the model is able to detect bounding boxes, you will have to assign the ID to the box. Simply click in the middle of the box to select the ID, pressing "N" to increase the ID if needed.
+<!-- When the program runs and an image is open, if the model is able to detect bounding boxes, you will have to assign the ID to the box. Simply click in the middle of the box to select the ID, pressing "N" to increase the ID if needed. -->
 
 
 The following keypresses provide different results when the image window is open:
@@ -67,3 +68,5 @@ labeler_dataset/
         └── img_2.txt
 ```
 
+## Important Notes
+If you want to just annotate without a models assistance, you can skip installing the tensorflow/torch libraries
