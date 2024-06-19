@@ -42,39 +42,43 @@ def extract_frames(frame_skip):
     shutil.copy(video_path, "used_videos/" + video_name.split(".")[0])
 
     if not os.path.exists(video_extraction_dir + "/extracted_frames/"):
+    # if not os.path.exists(video_extraction_dir + "/clusters/"):
         os.makedirs(video_extraction_dir + "/extracted_frames/")
 
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            print("Error: Could not open video.")
-            sys.exit()
-        
-        frame_count = 0
-        extracted_count = 0
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print("Error: Could not open video.")
+        sys.exit()
+    
+    frame_count = 0
+    extracted_count = 0
 
-        while True:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_count)
+    base_name = os.path.splitext(os.path.basename(video_path))[0]
+    while True:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_count)
+        frame_filename = os.path.join(video_extraction_dir + "/extracted_frames/", f"{base_name}_img_{frame_count:05d}.jpg")
 
+        if not os.path.exists(frame_filename):
             ret, frame = cap.read()
             
             if not ret:
                 break
-
-            # Skipping by FRAME_SKIP to shorten how many frames are needed to annotate
+        
+        # Skipping by FRAME_SKIP to shorten how many frames are needed to annotate
             if frame_count % frame_skip == 0:
-                base_name = os.path.splitext(os.path.basename(video_path))[0]
-                frame_filename = os.path.join(video_extraction_dir + "/extracted_frames/", f"{base_name}_img_{frame_count:05d}.jpg")
+                
              
-                cv2.imwrite(frame_filename, frame)
+                cv2.imwrite(frame_filename, frame) 
                 extracted_count += 1
+         
             
-            frame_count += frame_skip 
+        frame_count += frame_skip 
 
-        cap.release()
-        print(f"Extracted {extracted_count} frames to 'extracted_frames'")
+    cap.release()
+    print(f"Extracted {extracted_count} frames to 'extracted_frames'")
 
-    else:
-        print(f"Frames already exist at used_videos/{video_name.split('.')[0]}/extracted_frames/. \nIf you want to change how many frames are extracted in the video, make sure to delete the used_videos/{video_name.split('.')[0]}/extracted_frames/ directory")
+    # else:
+    #     print(f"Frames already exist at used_videos/{video_name.split('.')[0]}/extracted_frames/. \nIf you want to change how many frames are extracted in the video, make sure to delete the used_videos/{video_name.split('.')[0]}/extracted_frames/ directory")
     
     # File explorer pop up for selecting which model to use
     model_path = filedialog.askopenfilename(initialdir="/", title="SELECT MODEL/WEIGHTS FILE")

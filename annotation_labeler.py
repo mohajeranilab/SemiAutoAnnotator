@@ -8,21 +8,22 @@ from datetime import datetime
 from tkinter import Tk, filedialog, messagebox
 import shutil
 import sys
-import screeninfo  # Install using `pip install screeninfo`
+import screeninfo  
+
 from ultralytics import YOLO 
 import torch
 
 from utils import *
 from file_operations import *
-# from clustering import *
+from clustering import *
 
 def dummy_function(event, x, y, flags, param):
     pass
 
 
-# def clustering_data(image_dir, model_dir):
-#    main(Path(image_dir), model_dir)
-#    pass
+def clustering_data(image_dir, model_dir):
+   main(Path(image_dir), model_dir)
+   pass
 
 
 def show_image(): 
@@ -57,14 +58,33 @@ def handle_prev_img():
     already_passed = True
     click_count = 0
 
-    if img_num > 0:
-        img_num -= 2 
-        cv2.destroyAllWindows()
-        return
-    elif img_num == 0:
+    #     while img_num < len(imgs):
+    #         is_hidden = 0
+    #         annotations_exists = False
+    #         annotated_image_ids = set()
+    #         img_num = int(img_num)
+
+    # imgs = os.listdir(current_dir)
+
+    if img_num == 0:
         img_num -= 1
         cv2.destroyAllWindows()
-        return 
+        return
+    
+    img_num -= 1 
+    while img_num < len(imgs):
+        img_path = os.path.join(current_dir, imgs[img_num])
+        img_name = os.path.basename(img_path)
+        if int(((img_name.split('_'))[-1]).replace('.jpg', '')) % FRAME_SKIP != 0:
+
+            if img_num > 0:
+                img_num -= 1 
+      
+              
+        else:
+            img_num -= 1
+            cv2.destroyAllWindows() 
+            return
 
 
 def drawing_annotations(img):
@@ -385,7 +405,7 @@ def annotating(img_path, img_name, video_extraction_dir):
     
     
    
-    model_detecting = "On" if MODEL_DIR != "" and MODEL_DIR != None and not isinstance(MODEL_DIR, tuple) else "Off"
+    model_detecting = "On" if MODEL_FILE != "" and MODEL_FILE != None and not isinstance(MODEL_FILE, tuple) else "Off"
 
  
     for annotation_file in ANNOTATION_FILES:
@@ -447,107 +467,107 @@ def annotating(img_path, img_name, video_extraction_dir):
 
       
     
-        text_to_write = f"Click middle of detected box with correct ID - {object_id}"
-        show_image()
-        with open(video_extraction_dir + "/bbox_annotations.json", 'r') as f:
-            data = json.load(f)
-        keep_processing = True
-        while keep_processing and any(annotation["object_id"] == 0 for annotation in data["annotations"] if annotation["image_id"] == img_id):
-            cv2.setMouseCallback(img_name, add_num_to_detections)
+        # text_to_write = f"Click middle of detected box with correct ID - {object_id}"
+        # show_image()
+        # with open(video_extraction_dir + "/bbox_annotations.json", 'r') as f:
+        #     data = json.load(f)
+        # keep_processing = True
+        # while keep_processing and any(annotation["object_id"] == 0 for annotation in data["annotations"] if annotation["image_id"] == img_id):
+        #     cv2.setMouseCallback(img_name, add_num_to_detections)
         
-            key = cv2.waitKey(1)
-            if key == ord('n'): # "N": Next object ID
-                object_id += 1
+        #     key = cv2.waitKey(1)
+        #     if key == ord('n'): # "N": Next object ID
+        #         object_id += 1
           
-                img = cv2.imread(img_path)
+        #         img = cv2.imread(img_path)
 
-                drawing_annotations(img)
+        #         drawing_annotations(img)
               
-                text_to_write = f"Click middle of detected box with correct ID - {object_id}"
-                show_image()
+        #         text_to_write = f"Click middle of detected box with correct ID - {object_id}"
+        #         show_image()
 
-            if key == ord('d'): # "D": Delete annotations for current image
-                object_id = 1 
+        #     if key == ord('d'): # "D": Delete annotations for current image
+        #         object_id = 1 
                
-                for annotation_file in ANNOTATION_FILES:
-                    with open(video_extraction_dir + annotation_file, 'r') as f:
-                        data = json.load(f)
-                    data["annotations"] = [annotation for annotation in data["annotations"] if annotation["image_id"] != img_id]
+        #         for annotation_file in ANNOTATION_FILES:
+        #             with open(video_extraction_dir + annotation_file, 'r') as f:
+        #                 data = json.load(f)
+        #             data["annotations"] = [annotation for annotation in data["annotations"] if annotation["image_id"] != img_id]
         
-                    with open(video_extraction_dir + annotation_file, 'w') as f:
-                        json.dump(data, f, indent=4)
+        #             with open(video_extraction_dir + annotation_file, 'w') as f:
+        #                 json.dump(data, f, indent=4)
 
-                img = cv2.imread(img_path)
-                text_to_write = " "
-                show_image()
-                cv2.setMouseCallback(img_name, dummy_function)
+        #         img = cv2.imread(img_path)
+        #         text_to_write = " "
+        #         show_image()
+        #         cv2.setMouseCallback(img_name, dummy_function)
                 
-                break
+        #         break
 
-            if key == 26:
-                is_empty = True
+        #     if key == 26:
+        #         is_empty = True
 
-                for annotation_file in ANNOTATION_FILES:
-                    with open(video_extraction_dir + annotation_file, 'r') as f:
-                        data = json.load(f)
+        #         for annotation_file in ANNOTATION_FILES:
+        #             with open(video_extraction_dir + annotation_file, 'r') as f:
+        #                 data = json.load(f)
 
-                    if any(annotation["image_id"] == img_id for annotation in data["annotations"]):
-                        is_empty = False
-                        break
+        #             if any(annotation["image_id"] == img_id for annotation in data["annotations"]):
+        #                 is_empty = False
+        #                 break
                 
-                if is_empty:
-                    handle_prev_img()
-                    object_id = 1
-                    return
-                else:
-                    latest_time = None
+        #         if is_empty:
+        #             handle_prev_img()
+        #             object_id = 1
+        #             return
+        #         else:
+        #             latest_time = None
                 
-                for annotation_file in ANNOTATION_FILES:
-                    with open(video_extraction_dir + annotation_file, 'r') as f:
-                        data = json.load(f)
+        #         for annotation_file in ANNOTATION_FILES:
+        #             with open(video_extraction_dir + annotation_file, 'r') as f:
+        #                 data = json.load(f)
                     
-                    for i, annotation in enumerate(data["annotations"]):
-                        if annotation["image_id"] == img_id:
-                            timestamp = datetime.strptime(annotation["time"], "%Y-%m-%d %H:%M:%S")
-                            if latest_time is None or timestamp > latest_time:
-                                latest_time = timestamp
+        #             for i, annotation in enumerate(data["annotations"]):
+        #                 if annotation["image_id"] == img_id:
+        #                     timestamp = datetime.strptime(annotation["time"], "%Y-%m-%d %H:%M:%S")
+        #                     if latest_time is None or timestamp > latest_time:
+        #                         latest_time = timestamp
                 
 
 
-                for annotation_file in ANNOTATION_FILES:
-                    with open(video_extraction_dir + annotation_file, 'r') as f:
-                        data = json.load(f)
+        #         for annotation_file in ANNOTATION_FILES:
+        #             with open(video_extraction_dir + annotation_file, 'r') as f:
+        #                 data = json.load(f)
                     
-                    for i in range(len(data["annotations"])):
-                        timestamp = datetime.strptime(data["annotations"][i]["time"], "%Y-%m-%d %H:%M:%S")
-                        if timestamp == latest_time:
-                            object_id = data["annotations"][i]["object_id"]
-                            if data["annotations"][i]["type"] == "pose":
-                                if len(data["annotations"][i]["keypoints"]) > 1:
-                                    data["annotations"][i]["keypoints"].pop()
-                                    break
-                                else:
+        #             for i in range(len(data["annotations"])):
+        #                 timestamp = datetime.strptime(data["annotations"][i]["time"], "%Y-%m-%d %H:%M:%S")
+        #                 if timestamp == latest_time:
+        #                     object_id = data["annotations"][i]["object_id"]
+        #                     if data["annotations"][i]["type"] == "pose":
+        #                         if len(data["annotations"][i]["keypoints"]) > 1:
+        #                             data["annotations"][i]["keypoints"].pop()
+        #                             break
+        #                         else:
                                     
-                                    del data["annotations"][i]
-                                    break
-                            else:
+        #                             del data["annotations"][i]
+        #                             break
+        #                     else:
             
-                                del data["annotations"][i]
-                            break
+        #                         del data["annotations"][i]
+        #                     break
 
 
-                    with open(video_extraction_dir + annotation_file, 'w') as f:
-                        json.dump(data, f, indent=4)
+        #             with open(video_extraction_dir + annotation_file, 'w') as f:
+        #                 json.dump(data, f, indent=4)
                 
-                img = cv2.imread(img_path)
-                drawing_annotations(img)
+        #         img = cv2.imread(img_path)
+        #         drawing_annotations(img)
 
 
-                text_to_write = " "
-                show_image()
-                break
-            if keep_processing == False:
-                break
+        #         text_to_write = " "
+        #         show_image()
+        #         break
+        #     if keep_processing == False:
+        #         break
 
     breakout = False
     img = cv2.imread(img_path)
@@ -614,6 +634,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                 pose_type = ""
                 annotation_id = get_id(ANNOTATION_FILES, "annotations", video_extraction_dir)
                 
+                # initializes a new pose annotation in the pose json file 
                 info = {
                     "images": {
                         "id": img_id,
@@ -691,6 +712,7 @@ def annotating(img_path, img_name, video_extraction_dir):
             else:
                 latest_time = None
             
+            # finding the latest timestamp for an annotation for the current image id 
             for annotation_file in ANNOTATION_FILES:
                 with open(video_extraction_dir + annotation_file, 'r') as f:
                     data = json.load(f)
@@ -702,7 +724,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                             latest_time = timestamp
             
 
-
+            # deleting the annotation with the latest timestamp for an annotation for the current image id 
             for annotation_file in ANNOTATION_FILES:
                 with open(video_extraction_dir + annotation_file, 'r') as f:
                     data = json.load(f)
@@ -731,6 +753,7 @@ def annotating(img_path, img_name, video_extraction_dir):
             img = cv2.imread(img_path)
             drawing_annotations(img)
 
+            # rewriting the previous titles after deletion
             mode_text = ""
             if bbox_mode:
                 mode_text = "Bounding Box Mode - "
@@ -753,6 +776,7 @@ def annotating(img_path, img_name, video_extraction_dir):
         elif key == ord('n'): # "N": Next object ID
             object_id += 1
 
+            # reread the image but with a new object id and the same bbox titles as before 
             if bbox_mode == True:
                 img = cv2.imread(img_path)
                 drawing_annotations(img)
@@ -766,6 +790,7 @@ def annotating(img_path, img_name, video_extraction_dir):
       
                 show_image()
 
+            # initialize a new pose annotation when a new object id is created 
             if pose_mode ==  True:
             
                 img = cv2.imread(img_path)
@@ -799,7 +824,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                 show_image()
             
 
-        
+        # when in bbox mode, user can select 'f' for a bbox for feces or 'h' for a bbox that is partly hidden
         if bbox_mode:
         
             bbox_options = {
@@ -820,6 +845,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                     cv2.setMouseCallback(img_name, drawing_bbox)
                 
 
+        # when in pose mode, user can select '1', '2', or '3' for different parts of the object
         elif pose_mode:
 
             pose_options = {
@@ -843,14 +869,19 @@ def annotating(img_path, img_name, video_extraction_dir):
 
 
 if __name__ == "__main__":
+    # initializing constants 
     ANNOTATION_FILES = ["/bbox_annotations.json", "/pose_annotations.json"]
     FONT_SCALE = 0.5
     FONT_THICKNESS = 1
     FONT_COLOR = (255, 255, 0)
     ANNOTATION_COLORS = []
+    CONF_THRESHOLD = 0.25
+    FRAME_SKIP = 50
+
+
+    # creating a list of random annotation colors that are the same throughout different runs 
     seed = 42
     random.seed(seed)
-
     for _ in range(30):
         r = random.randint(0, 255)
         g = random.randint(0, 255)
@@ -859,46 +890,50 @@ if __name__ == "__main__":
         color = (r, g, b)
         ANNOTATION_COLORS.append(color)
 
-    CONF_THRESHOLD = 0.25
-    FRAME_SKIP = 100
 
-
+    # to get the sizing for putting text at appropiate places on the cv2 window
     textSize, baseline = cv2.getTextSize("test", cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_THICKNESS)
     textSizeWidth, textSizeHeight = textSize
 
 
- 
- 
-    MODEL_DIR, video_name, video_extraction_dir = extract_frames(FRAME_SKIP)
+    # user will choose the video file and/or model file, video file will be extracted as frames into a image directory
+    MODEL_FILE, video_name, video_extraction_dir = extract_frames(FRAME_SKIP)
     IMAGE_DIR = "used_videos/" + video_name.split(".")[0] + "/extracted_frames/"
-
 
     assert IMAGE_DIR is not None, "A image folder was empty."
 
-
+    # initialize the json files in the respective video directory
     for annotation_file in ANNOTATION_FILES:
         if not os.path.exists(video_extraction_dir + annotation_file):
             json_content = {"images": [], "annotations": []}
             
             with open(video_extraction_dir + annotation_file, 'w') as f:
                 json.dump(json_content, f, indent=4)
-    print(MODEL_DIR)
-    print(type(MODEL_DIR))
-    if not isinstance(MODEL_DIR, tuple) and MODEL_DIR != "" and MODEL_DIR != None:
+    DIR_LIST = None
+
+    # if a model is selected, otherwise let the user annotate with no model assistance
+    if not isinstance(MODEL_FILE, tuple) and MODEL_FILE != "" and MODEL_FILE != None:
         print("CUDA available?: ", torch.cuda.is_available())
         device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        model = YOLO(MODEL_DIR)
+        model = YOLO(MODEL_FILE)
         model.to(device)
 
 
-    #clustering_data(IMAGE_DIR, MODEL_DIR)
-    img_num = 0
-    imgs = os.listdir(IMAGE_DIR)
+        # clustering_data(IMAGE_DIR, MODEL_FILE)
 
+        # DIR_LIST = os.listdir("used_videos/" + video_name.split(".")[0] + "/clusters/")
+        # for i, dir in enumerate(DIR_LIST):
+        #     DIR_LIST[i] = "used_videos/" + video_name.split(".")[0] + "/clusters/" + dir + "/" 
+        # shutil.rmtree(IMAGE_DIR, ignore_errors=True)
+    else:
+        FRAME_SKIP = 100
+        DIR_LIST = None
+        
     already_passed = False
     object_id = 1
     annotations_exists = False
     model_detecting = "On"
+
     for annotation_file in ANNOTATION_FILES:
         with open(video_extraction_dir + annotation_file, 'r') as f:
             data = json.load(f)
@@ -907,7 +942,8 @@ if __name__ == "__main__":
             annotations_exists = True
             break
 
-    # Only execute the Tkinter code if annotations exist
+
+    # Create a window pop up to determine if user wants to continue where they left off 
     if annotations_exists:
         window = Tk()
         window.attributes('-topmost', True)
@@ -915,46 +951,53 @@ if __name__ == "__main__":
         result = messagebox.askquestion("Continue to Next Image", "Do you want to continue your work on the image following the last annotated image?")
 
         window.destroy()
-    
 
-    while img_num < len(imgs):
+    img_num = 0
+  
+    # directory list will be the list of clusters if a model is chosen, or a list of extracted frames
+    directories = [IMAGE_DIR] if not DIR_LIST else DIR_LIST
+
+    for current_dir in directories:
         
-        is_hidden = 0
-        annotations_exists = False
-        annotated_image_ids = set()
-        img_num = int(img_num)
-        img_path = os.path.join(IMAGE_DIR, imgs[int(img_num)])
-        img_name = os.path.basename(img_path)
-        img = cv2.imread(img_path)
+        imgs = os.listdir(current_dir)
 
-        IMAGE_HEIGHT, IMAGE_WIDTH = img.shape[:2]
-      
+        while img_num < len(imgs):
+            is_hidden = 0
+            annotations_exists = False
+            annotated_image_ids = set()
+            img_num = int(img_num)
+            img_path = os.path.join(current_dir, imgs[img_num])
+            img_name = os.path.basename(img_path)
+            print(img_name)
+            if int(((img_name.split('_'))[-1]).replace('.jpg', '')) % FRAME_SKIP == 0:
 
-        annotated_image_ids = cleaning(ANNOTATION_FILES, video_extraction_dir)
-        if annotated_image_ids and already_passed == False:
-            for annotation_file in ANNOTATION_FILES:
-                with open(video_extraction_dir + annotation_file, 'r') as f:
-                    data = json.load(f)
+                img = cv2.imread(img_path)
 
-                if len(data["images"]) == 0:
-                    break
+                IMAGE_HEIGHT, IMAGE_WIDTH = img.shape[:2]
 
-                for image_data in data["images"]:
-                    if image_data["file_name"] == img_path:
-                        if image_data["id"] in annotated_image_ids:
-                            annotations_exists = True
+                annotated_image_ids = cleaning(ANNOTATION_FILES, video_extraction_dir)
+                if annotated_image_ids and already_passed == False:
+                    for annotation_file in ANNOTATION_FILES:
+                        with open(os.path.join(video_extraction_dir, annotation_file), 'r') as f:
+                            data = json.load(f)
+
+                        if len(data["images"]) == 0:
                             break
-        
-        if annotations_exists == False:
-            annotating(img_path, img_name, video_extraction_dir)
-         
-        else:
-            if result == "no":
-                annotating(img_path, img_name, video_extraction_dir)
-            else:
-                pass
 
-        
-        img_num += 1
+                        for image_data in data["images"]:
+                            if image_data["file_name"] == img_path:
+                                if image_data["id"] in annotated_image_ids:
+                                    annotations_exists = True
+                                    break
+
+                if not annotations_exists:
+                    annotating(img_path, img_name, video_extraction_dir)
+                else:
+                    if result == "no":
+                        annotating(img_path, img_name, video_extraction_dir)
+
+            img_num += 1
+
+        img_num = 0  # Reset img_num for the next directory
 
     cv2.destroyAllWindows()
