@@ -73,6 +73,5 @@ labeler_dataset/
 ```
 
 ## Important Notes
-If you want to just annotate without a models assistance, you can skip installing the tensorflow/torch libraries by installing requirements
 
 If you want to change how many frames you skip to shorten annotation, change the FRAME_SKIP variable
