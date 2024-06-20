@@ -10,7 +10,11 @@ The user will start annotating images and will be assisted by a model that provi
     ```bash
     git clone https://github.com/mohajeranilab/SemiAutoAnnotator.git
     
-2. Install depedences:
+2. Install dependencies:
+    ```bash
+    pip install -r requirements_gpu.txt
+    ```
+    or if you do not have a GPU
     ```bash
     pip install -r requirements.txt
 
@@ -69,4 +73,6 @@ labeler_dataset/
 ```
 
 ## Important Notes
-If you want to just annotate without a models assistance, you can skip installing the tensorflow/torch libraries
+If you want to just annotate without a models assistance, you can skip installing the tensorflow/torch libraries by installing requirements
+
+If you want to change how many frames you skip to shorten annotation, change the FRAME_SKIP variable
