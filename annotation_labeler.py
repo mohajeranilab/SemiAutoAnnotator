@@ -9,6 +9,9 @@ from tkinter import Tk, filedialog, messagebox
 import shutil
 import sys
 import screeninfo  
+import time
+
+import argparse
 
 from ultralytics import YOLO 
 import torch
@@ -30,11 +33,13 @@ def show_image():
     """
     Shows the image, also resizes it to a specific size and also moves it to a specific place on the screen
 
-    Moving to a specific place solved my issue of the cv2 window opening in random parts of the screen 
+    ***Moving to a specific place solved my issue of the cv2 window opening in random parts of the screen 
     """
 
+    #cv2.destroyAllWindows()
     cv2.namedWindow(img_name, cv2.WINDOW_NORMAL)  
     cv2.resizeWindow(img_name, 700, 500)  
+
 
     screen = screeninfo.get_monitors()[0]  # Assuming you want the primary monitor
     width, height = screen.width, screen.height
@@ -44,6 +49,7 @@ def show_image():
     cv2.moveWindow(img_name, screen_center_x, screen_center_y)
     cv2.putText(img, text_to_write, (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
     cv2.putText(img, f"Model: {model_detecting}", (int(IMAGE_WIDTH * 0.75), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
+  
     cv2.imshow(img_name, img)
    
 
@@ -149,14 +155,14 @@ def drawing_bbox(event, x, y, flags, param):
             text_to_write = f"Bounding Box Mode - Feces"
         elif bbox_type == "normal":
             text_to_write = f"Bounding Box Mode - {object_id}"
-        
+        img = cv2.putText(img, str(object_id), (x - 10, y), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
         show_image()
 
     if event == cv2.EVENT_LBUTTONDOWN:
         if click_count == 0:
          
             start_x = max(0, min(x, IMAGE_WIDTH))  
-            start_y = max(0, min(y, IMAGE_HEIGHT))  
+            start_y = max(0, min(y, IMAGE_HEIGHT))   
             click_count += 1
 
 
@@ -455,11 +461,11 @@ def annotating(img_path, img_name, video_extraction_dir):
         img = cv2.imread(img_path)
 
         drawing_annotations(img)
+        # text_to_write = f"Click middle of detected box with correct ID - {object_id}"
+        show_image()
 
       
     
-        # text_to_write = f"Click middle of detected box with correct ID - {object_id}"
-        # show_image()
         # with open(video_extraction_dir + "/bbox_annotations.json", 'r') as f:
         #     data = json.load(f)
         # keep_processing = True
@@ -559,7 +565,7 @@ def annotating(img_path, img_name, video_extraction_dir):
         #         break
         #     if keep_processing == False:
         #         break
-
+    #cv2.destroyAllWindows()
     breakout = False
     img = cv2.imread(img_path)
     drawing_annotations(img)
@@ -606,6 +612,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                 bbox_mode = False
                 bbox_type = "normal"
                 is_hidden = 0
+                text_to_write = " "
                 img = cv2.imread(img_path)
                 drawing_annotations(img)
            
@@ -647,6 +654,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                 save_to_json(info, "pose", video_extraction_dir, ANNOTATION_FILES)
                 cv2.setMouseCallback(img_name, dummy_function)
             else:
+                text_to_write = " "
                 pose_mode = False
                 img = cv2.imread(img_path)
                 drawing_annotations(img)
@@ -868,7 +876,7 @@ if __name__ == "__main__":
     ANNOTATION_COLORS = []
     CONF_THRESHOLD = 0.25
     FRAME_SKIP = 50
-
+    parser = argparse.ArgumentParser()
 
     # creating a list of random annotation colors that are- the same throughout different runs 
     seed = 42
@@ -909,14 +917,14 @@ if __name__ == "__main__":
         model = YOLO(MODEL_FILE)
         model.to(device)
 
-
+        # comment this to turn off clustering 
         # clustering_data(IMAGE_DIR, MODEL_FILE)
-
         # DIR_LIST = os.listdir("used_videos/" + video_name.split(".")[0] + "/clusters/")
         # for i, dir in enumerate(DIR_LIST):
         #     DIR_LIST[i] = "used_videos/" + video_name.split(".")[0] + "/clusters/" + dir + "/" 
         # shutil.rmtree(IMAGE_DIR, ignore_errors=True)
     else:
+
         FRAME_SKIP = 100
         DIR_LIST = None
         
@@ -951,7 +959,22 @@ if __name__ == "__main__":
     for current_dir in directories:
         
         imgs = os.listdir(current_dir)
+        text_to_write = ""
+        img_path = os.path.join(current_dir, imgs[0])
+        img_name = os.path.basename(img_path)
+        img = cv2.imread(img_path)
+        IMAGE_HEIGHT, IMAGE_WIDTH = img.shape[:2]
 
+        #initializing images
+        for img_n in range(len(imgs)):
+            img_path = os.path.join(current_dir, imgs[img_n])
+            img_name = os.path.basename(img_path)
+            img = cv2.imread(img_path)
+            show_image()
+            cv2.destroyAllWindows()
+   
+      
+ 
         while img_num < len(imgs):
             is_hidden = 0
             annotations_exists = False
