@@ -875,8 +875,11 @@ if __name__ == "__main__":
     FONT_COLOR = (255, 255, 0)
     ANNOTATION_COLORS = []
     CONF_THRESHOLD = 0.25
-    FRAME_SKIP = 50
+    
     parser = argparse.ArgumentParser()
+    parser.add_argument('--frame_skip', type=int, default=50, help='Number of frames to skip')
+    args = parser.parse_args()
+    FRAME_SKIP = args.frame_skip
 
     # creating a list of random annotation colors that are- the same throughout different runs 
     seed = 42
@@ -924,8 +927,6 @@ if __name__ == "__main__":
         #     DIR_LIST[i] = "used_videos/" + video_name.split(".")[0] + "/clusters/" + dir + "/" 
         # shutil.rmtree(IMAGE_DIR, ignore_errors=True)
     else:
-
-        FRAME_SKIP = 100
         DIR_LIST = None
         
     already_passed = False
@@ -965,7 +966,7 @@ if __name__ == "__main__":
         img = cv2.imread(img_path)
         IMAGE_HEIGHT, IMAGE_WIDTH = img.shape[:2]
 
-        #initializing images
+        print("Initalizing images...")
         for img_n in range(len(imgs)):
             img_path = os.path.join(current_dir, imgs[img_n])
             img_name = os.path.basename(img_path)
@@ -974,7 +975,7 @@ if __name__ == "__main__":
             cv2.destroyAllWindows()
    
       
- 
+        print("Completed")
         while img_num < len(imgs):
             is_hidden = 0
             annotations_exists = False
