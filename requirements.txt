@@ -16,4 +16,4 @@ termcolor==2.4.0
 # tqdm==4.66.2
 # ultralytics==8.2.21
 screeninfo==0.8.1
-
+pygetwindow==0.0.9
