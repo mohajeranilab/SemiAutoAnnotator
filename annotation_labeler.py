@@ -10,7 +10,7 @@ import shutil
 import sys
 import screeninfo  
 import time
-
+import pygetwindow as gw
 import argparse
 
 from ultralytics import YOLO 
@@ -36,18 +36,13 @@ def show_image():
     ***Moving to a specific place solved my issue of the cv2 window opening in random parts of the screen 
     """
 
-    #cv2.destroyAllWindows()
     cv2.namedWindow(img_name, cv2.WINDOW_NORMAL)  
     cv2.resizeWindow(img_name, 700, 500)  
 
 
-    screen = screeninfo.get_monitors()[0]  # Assuming you want the primary monitor
-    width, height = screen.width, screen.height
-    screen_center_x = int((width - 700) / 2)
-    screen_center_y = int((height - 500)/ 2)
-
     cv2.moveWindow(img_name, screen_center_x, screen_center_y)
-    cv2.putText(img, text_to_write, (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
+    if text_to_write:
+        cv2.putText(img, text_to_write, (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
     cv2.putText(img, f"Model: {model_detecting}", (int(IMAGE_WIDTH * 0.75), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
   
     cv2.imshow(img_name, img)
@@ -148,6 +143,7 @@ def drawing_bbox(event, x, y, flags, param):
         drawing_annotations(img)
 
         img = cv2.rectangle(img, (start_x, start_y), (x, y), ANNOTATION_COLORS[object_id], 2)
+        print(x,y)
         if is_hidden == 1:
         
             text_to_write = f"Bounding Box Mode - Hidden - {object_id}"
@@ -387,8 +383,7 @@ def add_num_to_detections(event, x, y, flags, param):
             json.dump(data, f, indent=4)
 
 
-        # creating a training loop 
-        # explain the user how to use everything 
+       
 
 
 def annotating(img_path, img_name, video_extraction_dir):
@@ -569,7 +564,7 @@ def annotating(img_path, img_name, video_extraction_dir):
     breakout = False
     img = cv2.imread(img_path)
     drawing_annotations(img)
-    text_to_write = " "
+    text_to_write = None
     show_image()
 
     while True:
@@ -612,7 +607,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                 bbox_mode = False
                 bbox_type = "normal"
                 is_hidden = 0
-                text_to_write = " "
+                text_to_write = None
                 img = cv2.imread(img_path)
                 drawing_annotations(img)
            
@@ -654,7 +649,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                 save_to_json(info, "pose", video_extraction_dir, ANNOTATION_FILES)
                 cv2.setMouseCallback(img_name, dummy_function)
             else:
-                text_to_write = " "
+                text_to_write = None
                 pose_mode = False
                 img = cv2.imread(img_path)
                 drawing_annotations(img)
@@ -685,7 +680,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                     json.dump(data, f, indent=4)
 
             img = cv2.imread(img_path)
-            text_to_write = " "
+            text_to_write = None
             show_image()
             cv2.setMouseCallback(img_name, dummy_function)
             bbox_mode = False
@@ -869,6 +864,11 @@ def annotating(img_path, img_name, video_extraction_dir):
 
 if __name__ == "__main__":
     # initializing constants 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--frame_skip', type=int, default=50, help='Number of frames to skip')
+    args = parser.parse_args()
+    FRAME_SKIP = args.frame_skip
+
     ANNOTATION_FILES = ["/bbox_annotations.json", "/pose_annotations.json"]
     FONT_SCALE = 0.5
     FONT_THICKNESS = 1
@@ -876,11 +876,10 @@ if __name__ == "__main__":
     ANNOTATION_COLORS = []
     CONF_THRESHOLD = 0.25
     
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--frame_skip', type=int, default=50, help='Number of frames to skip')
-    args = parser.parse_args()
-    FRAME_SKIP = args.frame_skip
-
+    screen = screeninfo.get_monitors()[0]  # Assuming you want the primary monitor
+    width, height = screen.width, screen.height
+    screen_center_x = int((width - 700) / 2)
+    screen_center_y = int((height - 500)/ 2)
     # creating a list of random annotation colors that are- the same throughout different runs 
     seed = 42
     random.seed(seed)
@@ -925,7 +924,7 @@ if __name__ == "__main__":
         # DIR_LIST = os.listdir("used_videos/" + video_name.split(".")[0] + "/clusters/")
         # for i, dir in enumerate(DIR_LIST):
         #     DIR_LIST[i] = "used_videos/" + video_name.split(".")[0] + "/clusters/" + dir + "/" 
-        # shutil.rmtree(IMAGE_DIR, ignore_errors=True)
+        #shutil.rmtree(IMAGE_DIR, ignore_errors=True)
     else:
         DIR_LIST = None
         
@@ -960,18 +959,23 @@ if __name__ == "__main__":
     for current_dir in directories:
         
         imgs = os.listdir(current_dir)
-        text_to_write = ""
+        text_to_write = None
         img_path = os.path.join(current_dir, imgs[0])
         img_name = os.path.basename(img_path)
+        img_name = img_path
         img = cv2.imread(img_path)
         IMAGE_HEIGHT, IMAGE_WIDTH = img.shape[:2]
 
-        print("Initalizing images...")
+        print("Initializing images...")
         for img_n in range(len(imgs)):
             img_path = os.path.join(current_dir, imgs[img_n])
             img_name = os.path.basename(img_path)
             img = cv2.imread(img_path)
             show_image()
+            # win = gw.getWindowsWithTitle(img_name)[0]
+            # win.minimize()
+
+
             cv2.destroyAllWindows()
    
       
