@@ -42,7 +42,7 @@ def extract_frames(frame_skip):
     shutil.copy(video_path, "used_videos/" + video_name.split(".")[0])
 
     if not os.path.exists(video_extraction_dir + "/extracted_frames/"):
-    # if not os.path.exists(video_extraction_dir + "/clusters/"):
+
         os.makedirs(video_extraction_dir + "/extracted_frames/")
 
     cap = cv2.VideoCapture(video_path)
@@ -77,10 +77,7 @@ def extract_frames(frame_skip):
     cap.release()
     print(f"Extracted {extracted_count} new frames to 'extracted_frames'")
 
-    # else:
-    #     print(f"Frames already exist at used_videos/{video_name.split('.')[0]}/extracted_frames/. \nIf you want to change how many frames are extracted in the video, make sure to delete the used_videos/{video_name.split('.')[0]}/extracted_frames/ directory")
-    
-    # File explorer pop up for selecting which model to use
+
     model_path = filedialog.askopenfilename(initialdir="/", title="SELECT MODEL/WEIGHTS FILE")
     
     root.destroy()
