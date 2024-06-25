@@ -383,10 +383,14 @@ def add_num_to_detections(event, x, y, flags, param):
             json.dump(data, f, indent=4)
 
 
-       
+     
 
 
 def annotating(img_path, img_name, video_extraction_dir):
+    """
+    Main annotation function 
+    """
+
     global already_passed, bbox_type, pose_type, bbox_mode, pose_mode, object_id, img, is_hidden, annotation_id, img_id, click_count, model_detecting, text_to_write, keep_processing
     img = cv2.imread(img_path)
     bbox_mode = False
@@ -578,6 +582,58 @@ def annotating(img_path, img_name, video_extraction_dir):
         elif key == ord('r'): # "R": Begins retraining the model with the annotations a user chooses
             retrain()
           
+        elif key == ord('j'):
+            if object_id == 0:
+                object_id = 0
+            else:
+                object_id -= 1
+
+            # reread the image but with a new object id and the same bbox titles as before 
+            if bbox_mode == True:
+                img = cv2.imread(img_path)
+                drawing_annotations(img)
+                if is_hidden == 1:
+                    text_to_write = f"Bounding Box Mode - Hidden - {object_id}"
+                elif bbox_type == "feces":
+                    text_to_write = f"Bounding Box Mode - Feces"
+                elif bbox_type == "normal":
+                    text_to_write = f"Bounding Box Mode - {object_id}"
+                
+      
+                show_image()
+
+            # initialize a new pose annotation when a new object id is created 
+            if pose_mode ==  True:
+            
+                img = cv2.imread(img_path)
+                drawing_annotations(img)
+
+                pose_mode_text = f"Pose Mode - {object_id}"
+                if pose_type:
+                    pose_mode_text = f"Pose Mode - {pose_type.capitalize()} - {object_id}"
+                    annotation_id = get_id(ANNOTATION_FILES, "annotations", video_extraction_dir)
+                    info = {
+                        "images": {
+                            "id": img_id,
+                            "file_name": img_path,
+                            "image_height": IMAGE_HEIGHT,
+                            "image_width": IMAGE_WIDTH
+                        },
+                        "annotation": {
+                            "id": annotation_id,
+                            "keypoints": [],
+                            "image_id": img_id,
+                            "object_id": object_id,
+                            "iscrowd": 0,
+                            "type": "pose",
+                            "conf": 1,
+                            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        }
+                    }
+                    save_to_json(info, "pose", video_extraction_dir, ANNOTATION_FILES)
+
+                text_to_write = pose_mode_text
+                show_image()
 
         elif key == ord('v'): # "V": Making video of annotated images belonging to a video
     
@@ -755,11 +811,12 @@ def annotating(img_path, img_name, video_extraction_dir):
                     mode_text += "Hidden - "
                 elif bbox_type == "feces":
                     mode_text += "Feces - "
+                mode_text += str(object_id)
             elif pose_mode:
                 mode_text = "Pose Mode - "
                 if pose_type:
                     mode_text += f"{pose_type.capitalize()} - "
-            mode_text += str(object_id)
+                mode_text += str(object_id)
 
             
             already_passed = False
