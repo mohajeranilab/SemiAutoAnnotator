@@ -35,12 +35,22 @@ def show_image():
 
     ***Moving to a specific place solved my issue of the cv2 window opening in random parts of the screen 
     """
+  
+    if gw.getWindowsWithTitle(img_name):
+
+        window = gw.getWindowsWithTitle(img_name)[0]  # Get the first window with the given title
+        x = window.left
+        y = window.top
+
+    else:
+        x = screen_center_x
+        y = screen_center_y
 
     cv2.namedWindow(img_name, cv2.WINDOW_NORMAL)  
     cv2.resizeWindow(img_name, 700, 500)  
 
 
-    cv2.moveWindow(img_name, screen_center_x, screen_center_y)
+    cv2.moveWindow(img_name, x, y)
     if text_to_write:
         cv2.putText(img, text_to_write, (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
     cv2.putText(img, f"Model: {model_detecting}", (int(IMAGE_WIDTH * 0.75), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
@@ -400,8 +410,6 @@ def annotating(img_path, img_name, video_extraction_dir):
     is_hidden = 0
     img_id = None
     click_count = 0
-    
-
 
  
     for annotation_file in ANNOTATION_FILES:
@@ -603,7 +611,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                 show_image()
 
             # initialize a new pose annotation when a new object id is created 
-            if pose_mode ==  True:
+            elif pose_mode ==  True:
             
                 img = cv2.imread(img_path)
                 drawing_annotations(img)
@@ -715,7 +723,7 @@ def annotating(img_path, img_name, video_extraction_dir):
 
 
         elif key == 13: # "Enter": Go to the next image
-            cv2.destroyAllWindows()
+            #cv2.destroyAllWindows()
             pose_mode = False
             bbox_mode = False
             already_passed = False
