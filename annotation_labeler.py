@@ -100,7 +100,7 @@ def drawing_annotations(img):
     annotation_types = ["bbox", "pose"]
 
     for type_idx, annotation_type in enumerate(annotation_types):
-        with open(video_extraction_dir + ANNOTATION_FILES[type_idx], 'r') as f:
+        with open(video_extraction_dir + "\\" + ANNOTATION_FILES[type_idx], 'r') as f:
             annotations = json.load(f)
         
         for annotation in annotations["annotations"]:
@@ -131,7 +131,7 @@ def drawing_bbox(event, x, y, flags, param):
     annotation_id = get_id(ANNOTATION_FILES, "annotations", video_extraction_dir)
     img_id = None
     for annotation_file in ANNOTATION_FILES:
-        with open(video_extraction_dir + annotation_file, 'r') as f:
+        with open(video_extraction_dir + "\\" + annotation_file, 'r') as f:
             data = json.load(f)
 
             found = False
@@ -414,7 +414,7 @@ def annotating(img_path, img_name, video_extraction_dir):
  
     for annotation_file in ANNOTATION_FILES:
 
-        with open(video_extraction_dir + annotation_file, 'r') as f:
+        with open(video_extraction_dir + "\\" + annotation_file, 'r') as f:
             data = json.load(f)
 
             for image_data in data["images"]:
@@ -736,11 +736,11 @@ def annotating(img_path, img_name, video_extraction_dir):
 
         elif key == ord('d'): # "D": Delete all annotations for the current image
             for annotation_file in ANNOTATION_FILES:
-                with open(video_extraction_dir + annotation_file, 'r') as f:
+                with open(video_extraction_dir + "\\" + annotation_file, 'r') as f:
                     data = json.load(f)
                 data["annotations"] = [annotation for annotation in data["annotations"] if annotation["image_id"] != img_id]
     
-                with open(video_extraction_dir + annotation_file, 'w') as f:
+                with open(video_extraction_dir + "\\" + annotation_file, 'w') as f:
                     json.dump(data, f, indent=4)
 
             img = cv2.imread(img_path)
@@ -756,7 +756,7 @@ def annotating(img_path, img_name, video_extraction_dir):
             is_empty = True
 
             for annotation_file in ANNOTATION_FILES:
-                with open(video_extraction_dir + annotation_file, 'r') as f:
+                with open(video_extraction_dir + "\\" + annotation_file, 'r') as f:
                     data = json.load(f)
 
                 if any(annotation["image_id"] == img_id for annotation in data["annotations"]):
@@ -772,7 +772,7 @@ def annotating(img_path, img_name, video_extraction_dir):
             
             # finding the latest timestamp for an annotation for the current image id 
             for annotation_file in ANNOTATION_FILES:
-                with open(video_extraction_dir + annotation_file, 'r') as f:
+                with open(video_extraction_dir + "\\" + annotation_file, 'r') as f:
                     data = json.load(f)
                 
                 for i, annotation in enumerate(data["annotations"]):
@@ -784,7 +784,7 @@ def annotating(img_path, img_name, video_extraction_dir):
 
             # deleting the annotation with the latest timestamp for an annotation for the current image id 
             for annotation_file in ANNOTATION_FILES:
-                with open(video_extraction_dir + annotation_file, 'r') as f:
+                with open(video_extraction_dir + "\\" + annotation_file, 'r') as f:
                     data = json.load(f)
                 
                 for i in range(len(data["annotations"])):
@@ -805,7 +805,7 @@ def annotating(img_path, img_name, video_extraction_dir):
                         break
 
 
-                with open(video_extraction_dir + annotation_file, 'w') as f:
+                with open(video_extraction_dir + "\\" + annotation_file, 'w') as f:
                     json.dump(data, f, indent=4)
             
             img = cv2.imread(img_path)
@@ -934,7 +934,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     FRAME_SKIP = args.frame_skip
 
-    ANNOTATION_FILES = ["/bbox_annotations.json", "/pose_annotations.json"]
+    ANNOTATION_FILES = ["bbox_annotations.json", "pose_annotations.json"]
     FONT_SCALE = 0.5
     FONT_THICKNESS = 1
     FONT_COLOR = (255, 255, 0)
@@ -970,10 +970,10 @@ if __name__ == "__main__":
 
     # initialize the json files in the respective video directory
     for annotation_file in ANNOTATION_FILES:
-        if not os.path.exists(video_extraction_dir + annotation_file):
+        if not os.path.exists(video_extraction_dir + "\\" + annotation_file):
             json_content = {"images": [], "annotations": []}
             
-            with open(video_extraction_dir + annotation_file, 'w') as f:
+            with open(video_extraction_dir + "\\" + annotation_file, 'w') as f:
                 json.dump(json_content, f, indent=4)
     DIR_LIST = None
 
@@ -999,7 +999,7 @@ if __name__ == "__main__":
     model_detecting = "On"
 
     for annotation_file in ANNOTATION_FILES:
-        with open(video_extraction_dir + annotation_file, 'r') as f:
+        with open(video_extraction_dir + "\\" + annotation_file, 'r') as f:
             data = json.load(f)
 
         if data["annotations"]:
