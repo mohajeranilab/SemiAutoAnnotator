@@ -143,7 +143,7 @@ def drawing_bbox(event, x, y, flags, param):
         drawing_annotations(img)
 
         img = cv2.rectangle(img, (start_x, start_y), (x, y), ANNOTATION_COLORS[object_id], 2)
-        print(x,y)
+
         if is_hidden == 1:
         
             text_to_write = f"Bounding Box Mode - Hidden - {object_id}"
