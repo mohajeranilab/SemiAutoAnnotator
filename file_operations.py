@@ -102,7 +102,7 @@ def save_to_json(annotations, type, video_extraction_dir, annotation_files):
         return  
 
         
-    with open(video_extraction_dir + annotation_files[file_index], 'r') as f:
+    with open(video_extraction_dir +"\\" + annotation_files[file_index], 'r') as f:
         data = json.load(f)
 
     image_id = annotations["images"]["id"]
@@ -112,7 +112,7 @@ def save_to_json(annotations, type, video_extraction_dir, annotation_files):
         data["images"].append(annotations["images"])
 
     data["annotations"].append(annotations["annotation"])
-    with open(video_extraction_dir + annotation_files[file_index], 'w') as f:
+    with open(video_extraction_dir + "\\" + annotation_files[file_index], 'w') as f:
         json.dump(data, f, indent=4)
 
 def make_video(annotation_files, annotation_colors, image_width, image_height):
@@ -133,7 +133,7 @@ def make_video(annotation_files, annotation_colors, image_width, image_height):
     # First, gather all frames to write
     for annotation_file in annotation_files:
      
-        with open(video_path + '/' + annotation_file, 'r') as f:
+        with open(video_path + "\\" + annotation_file, 'r') as f:
             data = json.load(f)
         if len(data["annotations"]) != 0:
             for image_data in data["images"]:
@@ -147,7 +147,7 @@ def make_video(annotation_files, annotation_colors, image_width, image_height):
     all_annotations = {}
 
     for annotation_file in annotation_files:
-        with open(video_path + '/' + annotation_file, 'r') as f:
+        with open(video_path + "\\" + annotation_file, 'r') as f:
             data = json.load(f)
         
         for annotation in data["annotations"]:
@@ -162,12 +162,12 @@ def make_video(annotation_files, annotation_colors, image_width, image_height):
             image = cv2.imread(image_file)
             
             for annotation_file, annotation in all_annotations[image_id]:
-                if annotation_file == "/bbox_annotations.json":
+                if annotation_file == "bbox_annotations.json":
                     image = cv2.rectangle(image, (annotation["bbox"][0], annotation["bbox"][1]), 
                                         (annotation["bbox"][2], annotation["bbox"][3]), 
                                         annotation_colors[annotation["object_id"]], 2)
 
-                elif annotation_file == "/pose_annotations.json":
+                elif annotation_file == "pose_annotations.json":
                     for keypoint_annotation in annotation["keypoints"]:
                         if len(keypoint_annotation) != 0:
                             image = cv2.circle(image, (keypoint_annotation[1][0], keypoint_annotation[1][1]), 

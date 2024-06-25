@@ -970,6 +970,7 @@ if __name__ == "__main__":
 
     # initialize the json files in the respective video directory
     for annotation_file in ANNOTATION_FILES:
+        print(os.path.exists(video_extraction_dir + "\\" + annotation_file))
         if not os.path.exists(video_extraction_dir + "\\" + annotation_file):
             json_content = {"images": [], "annotations": []}
             

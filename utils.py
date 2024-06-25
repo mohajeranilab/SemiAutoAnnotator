@@ -12,7 +12,7 @@ def get_id(annotation_files, data_type, video_extraction_dir):
 
     id_set = set()
     for annotation_file in annotation_files:
-        with open(video_extraction_dir + annotation_file, 'r') as f:
+        with open(video_extraction_dir + "\\" + annotation_file, 'r') as f:
             data_file = json.load(f)
         if len(data_file["images"]) == 0:
             id = 0
@@ -24,7 +24,7 @@ def get_id(annotation_files, data_type, video_extraction_dir):
 
 def cleaning(annotation_files, video_extraction_dir):
     for annotation_file in annotation_files:
-        with open(video_extraction_dir + annotation_file, 'r') as f:
+        with open(video_extraction_dir + "\\" + annotation_file, 'r') as f:
             data = json.load(f)
 
         if len(data["images"]) == 0:
@@ -36,10 +36,10 @@ def cleaning(annotation_files, video_extraction_dir):
 
 
         data["images"] = [image_data for image_data in data["images"] if image_data["id"] in annotated_image_ids]
-        if annotation_file == "/pose_annotations.json":
+        if annotation_file == "pose_annotations.json":
             data["annotations"] = [annotation_data for annotation_data in data["annotations"] if annotation_data["keypoints"]]
         
-        with open(video_extraction_dir + annotation_file, 'w') as f:
+        with open(video_extraction_dir + "\\" + annotation_file, 'w') as f:
             json.dump(data, f, indent=4)
         
     return annotated_image_ids
