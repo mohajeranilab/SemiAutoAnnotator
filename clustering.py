@@ -15,7 +15,7 @@ import shutil
 from sklearn.metrics import pairwise_distances_argmin_min
 from sklearn.metrics.pairwise import pairwise_distances
 from tkinter import filedialog
-
+from scipy.spatial import ConvexHull
 
  
 def preprocess_image(img_path):
@@ -39,6 +39,10 @@ def hook_fn(module, input, output):
 
 
 def extract_features(model, img, layer_index): 
+    """
+    Extractes features from certain layer in model 
+    """
+
     global intermediate_features
     intermediate_features = []
     hook = model.model.model[layer_index].register_forward_hook(hook_fn)
@@ -73,6 +77,9 @@ def create_features_list(model, image_paths, layer_index, sample_percentage):
 
 
 def plot_features_space(features_dict):
+    """
+    Plots featured space flattened to 2D space 
+    """
     X_values = np.array(list(features_dict.values())) 
 
     # Reshape the array to flatten the extra dimension
@@ -90,6 +97,9 @@ def plot_features_space(features_dict):
 
 
 def applying_tsne(features, perplexity):
+    """
+    Applying t-SNE algorithm to featured data, transforming into a 2D space 
+    """
     X_values = np.array(list(features.values())) 
 
     if len(X_values) == 0:
@@ -99,16 +109,19 @@ def applying_tsne(features, perplexity):
     X_keys = np.array(list(features.keys()))
     X_values = StandardScaler().fit_transform(X_values)
     tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
-    X_tsne = tsne.fit_transform(X_values)
-    X_tsne_with_names = np.column_stack((X_keys, X_tsne))
+    coordinates_tsne = tsne.fit_transform(X_values)
+    X_tsne_with_names = np.column_stack((X_keys, coordinates_tsne))
 
     return X_tsne_with_names
 
 
 def plot_reduced_feature_space(features_tsne):
+    """
+    Plotting the feature space after t-SNE has been applied
+    """
 
-    X_tsne = features_tsne[:, 1:].astype(float)
-    plt.scatter(X_tsne[:, 0], X_tsne[:, 1])
+    coordinates_tsne = features_tsne[:, 1:].astype(float)
+    plt.scatter(coordinates_tsne[:, 0], coordinates_tsne[:, 1])
     plt.title('Data after t-SNE')
     plt.xlabel('t-SNE Component 1')
     plt.ylabel('t-SNE Component 2')
@@ -117,11 +130,11 @@ def plot_reduced_feature_space(features_tsne):
 
 def cluster_and_plot(features_tsne, epsilon, min_samples, image_paths, image_dir):
 
-    X_tsne = features_tsne[:, 1:].astype(float)
-    db = DBSCAN(eps=epsilon, min_samples=min_samples).fit(X_tsne)
+    coordinates_tsne = features_tsne[:, 1:].astype(float)
+    db = DBSCAN(eps=epsilon, min_samples=min_samples).fit(coordinates_tsne)
     labels = db.labels_
 
-    # db_index = davies_bouldin_score(X_tsne, labels)
+    # db_index = davies_bouldin_score(coordinates_tsne, labels)
     # print("Davies-Bouldin Index: ", db_index)
 
     n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
@@ -129,90 +142,57 @@ def cluster_and_plot(features_tsne, epsilon, min_samples, image_paths, image_dir
     print("Estimated number of clusters: %d" % n_clusters)
     print("Estimated number of noise points: %d" % n_noise)
 
-    cluster_amount =500
-    plt.scatter(X_tsne[:, 0], X_tsne[:, 1], c=labels, cmap='viridis')
+
+    plt.scatter(coordinates_tsne[:, 0], coordinates_tsne[:, 1], c=labels, cmap='viridis')
     cluster_centers = {}
-    cluster_diversity = {}
-    cluster_closest_images = {}
-    used_indices = set()
+   
+ 
+    clusters_dir = f"{image_dir.parent}/clusters/"
+    shutil.rmtree(clusters_dir, ignore_errors=True)
+    os.makedirs(clusters_dir, exist_ok=True)
     for cluster_label in set(labels):
         if cluster_label != -1:  # Ignore noise points
-            cluster_points = X_tsne[labels == cluster_label]
+            cluster_points = coordinates_tsne[labels == cluster_label]
+            cluster_indices = np.where(labels == cluster_label)[0]
             cluster_center = np.mean(cluster_points, axis=0)
             cluster_centers[cluster_label] = cluster_center
             plt.text(cluster_center[0], cluster_center[1], str(cluster_label),
                     color='red', fontsize=12, weight='bold')
+            
+            all_hull_indices = []
+            simplices = []
+            num_hulls = len(cluster_points) // 100
+            num_hulls = max(3, num_hulls)
+            for _ in range(num_hulls):
 
-
-        #     # Compute distances to the cluster center
-        #     #linalg.norm calculate euclidean distance (norm)
-        #     #The axis=1 parameter specifies that the norm should be calculated along each row (point) of the array.
-        #     #This results in a 1D array of shape (n,), where each element is the Euclidean distance from a point in cluster_points to cluster_center.
-            distances = np.linalg.norm(cluster_points - cluster_center, axis=1)
-             #     # np.argsort returns the indices that would sort an array.
-        #     # For the distances array, it returns the indices of the elements in ascending order.
-            closest_indices = np.argsort(distances)
-
-            # Ensure uniqueness
-            unique_closest_indices = []
-            for idx in closest_indices:
-                if len(unique_closest_indices) >= cluster_amount:
+                if len(cluster_points) < 3:
                     break
-                absolute_idx = np.where(labels == cluster_label)[0][idx]  # Get the absolute index
-                if absolute_idx not in used_indices:
-                    unique_closest_indices.append(absolute_idx)
-                    used_indices.add(absolute_idx)
-
-            print(unique_closest_indices)
-            closest_image_paths = [image_paths[idx] for idx in unique_closest_indices]
-            cluster_closest_images[cluster_label] = closest_image_paths
-
+                hull = ConvexHull(cluster_points)
+                hull_indices = hull.vertices
+                all_hull_indices.append(hull_indices)
+                for simplex in hull.simplices:
+              
         
-       
+                    simplices.append((cluster_points[simplex, 0], cluster_points[simplex, 1]))
+                cluster_points = np.delete(cluster_points, hull_indices, axis=0)
+                cluster_indices = np.delete(cluster_indices, hull_indices, axis=0)
+            for x, y in simplices:
+                plt.plot(x, y, 'k-', lw=1)
+           
+            centroid_dir = os.path.join(clusters_dir, f"cluster_{cluster_label}/")
+            os.makedirs(centroid_dir, exist_ok=True)
 
-       
-    for cluster_label, cluster_images in cluster_closest_images.items():
-        print("closest_images_cluster", cluster_label, len(cluster_images))
-    plt.title('DBSCAN Clustering after t-SNE')
+            for idxs in all_hull_indices:
+                for idx in idxs:
+                    image_path = features_tsne[idx][0]
+                    shutil.copy(f"{image_dir.parent}/extracted_frames/{image_path}", centroid_dir)
+  
+
+    plt.title('DBSCAN Clustering after t-SNE with Convex Hulls')
     plt.xlabel('t-SNE Component 1')
     plt.ylabel('t-SNE Component 2')
     plt.show()
 
-    cluster_images = {cluster_label: [] for cluster_label in set(labels)}
-     
-
-    clusters_dir = f"{image_dir.parent}/clusters/"
-    shutil.rmtree(clusters_dir, ignore_errors=True)
-    os.makedirs(clusters_dir, exist_ok=True)
-    
-
-
-    for centroid_label, centroid_images  in cluster_closest_images.items():
-   
-        centroid_dir = os.path.join(clusters_dir, f"cluster_{centroid_label}/")
-        os.makedirs(centroid_dir, exist_ok=True)
-        for centroid_image in centroid_images:
-            shutil.copy(str(centroid_image), centroid_dir)
-
-    # plt.bar(list(cluster_images.keys()), list(len(values) for values in cluster_images.values()), color="maroon", width=0.4)
-    # plt.title("Images per cluster")
-    # plt.xlabel('Cluster #')
-    # plt.ylabel('# of images')
-    # plt.show()
-     
-    # for cluster_label, images in cluster_images.items():
-
-    #     if cluster_label != -1:
-    #         num_images = min(len(images), cluster_amount)
-    #         fig, axes = plt.subplots(1, num_images, figsize=(15, 3))
-    #         fig.suptitle(f"Images in {cluster_label}", fontsize=16)
-
-    #         for i in range(num_images):
-    #             image = plt.imread(images[i])
-    #             axes[i].imshow(image, cmap="gray")
-    #             axes[i].axis('off')
-    
-    # plt.show()
     
     return cluster_centers
 
@@ -232,9 +212,12 @@ def main(image_dir, model_path):
     # INCORRECT_IMAGE_DIR = Path("incorrectly_detected")
     # INCORRECT_IMAGE_PATHS = sorted(INCORRECT_IMAGE_DIR.glob("*.png"))
     IMAGE_PATHS = sorted(image_dir.glob("*.jpg")) # change to *.jpg for jpg images
-  
+    PERPLEXITY = 10 * (len(IMAGE_PATHS))/1000
+    
+
 
     LAYER_INDEX = 21 # 21 is the last index before detection head, choosing highest layer for high level features 
+    # 20 works and 22? 
     SAMPLE_PERCANTAGE = 1
 
     #IMAGES_PER_CLUSTERS = 5
@@ -242,7 +225,7 @@ def main(image_dir, model_path):
     # t-SNE params
     # GOOD PARAMS: (~1000 images: (15, 5), (20, 5)), (~2000 images: (30, 5), )
     # new dataaset ~900 (20, 5), ~ 1800 (20, 5)
-    PERPLEXITY = 20 # controls number of neighbors used in the algorithm, a guess about the number of close neigbors each point has
+    #PERPLEXITY = 10 # controls number of neighbors used in the algorithm, a guess about the number of close neigbors each point has
 
     # It determines the balance between local and global aspects of the data manifold. Higher perplexity values tend to result in more global views of the data, while lower perplexity values focus more on local structure.
 
@@ -287,10 +270,10 @@ def main(image_dir, model_path):
     # distances_to_clusters = pairwise_distances(incorrect_features_tsne[:, 1:], cluster_centers)
 
 
-    # closest_cluster_indices = np.argmin(distances_to_clusters, axis=1)
+    # farthest_cluster_indices = np.argmin(distances_to_clusters, axis=1)
 
 
-    # cluster_labels = [f"cluster_{idx}" for idx in closest_cluster_indices]
+    # cluster_labels = [f"cluster_{idx}" for idx in farthest_cluster_indices]
 
     # cluster_image_dict = {cluster_label: [] for cluster_label in set(cluster_labels)}
 
