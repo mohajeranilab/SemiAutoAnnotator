@@ -35,21 +35,56 @@ def show_image():
 
     ***Moving to a specific place solved my issue of the cv2 window opening in random parts of the screen 
     """
-  
-    if gw.getWindowsWithTitle(img_name):
-
-        window = gw.getWindowsWithTitle(img_name)[0]  # Get the first window with the given title
-        x = window.left
-        y = window.top
-
+    global coordinate_stack
+   
+    if not any(value is None for value in coordinate_stack.values()):
+        
+            if gw.getWindowsWithTitle(img_name):
+               
+                window = gw.getWindowsWithTitle(img_name)[0]  # Get the first window with the given title
+                x, y = window.left, window.top
+                #print(window.width, window.height)
+                #window_width, window_height = window.width, window.height
+                 
+                #if img_name == image_name:
+                coordinate_stack = {}
+                coordinate_stack["img_name"] = img_name
+                coordinate_stack["coordinates"] = (x, y)
+                #coordinate_stack["dimensions"] = (window_width, window_height)
+                # coordinate_stack = (img_name, ((x, y), (window_width, window_height)))
+              
+            else:
+                # x, y = coordinate_stack[1][0]
+                # window_width, window_height = [1][1]
+                x, y = coordinate_stack['coordinates']
+                #window_width, window_height = coordinate_stack['dimensions']
     else:
-        x = screen_center_x
-        y = screen_center_y
+        if gw.getWindowsWithTitle(img_name):
+          
+            window = gw.getWindowsWithTitle(img_name)[0]  # Get the first window with the given title
+            x, y = window.left, window.top
+           
+            window_width, window_height = window.width, window.height
+
+        else:
+            x, y = screen_center_x, screen_center_y
+   
+            window_width, window_height = 640, 480
+
+
+    #cv2.destroyAllWindows()
+    if coordinate_stack['img_name'] != img_name:
+        coordinate_stack = {}
+        coordinate_stack['img_name'] = img_name
+        coordinate_stack['coordinates'] = (x, y)
+        #coordinate_stack['dimensions'] = (window_width, window_height)
+        #coordinate_stack = (img_name, ((x, y), (window_width, window_height)))
+        cv2.destroyAllWindows()
+    
 
     cv2.namedWindow(img_name, cv2.WINDOW_NORMAL)  
-    cv2.resizeWindow(img_name, 700, 500)  
-
-
+    # cv2.resizeWindow(img_name, (window_width, window_height))  
+    cv2.resizeWindow(img_name, (700, 500))  
     cv2.moveWindow(img_name, x, y)
     if text_to_write:
         cv2.putText(img, text_to_write, (int(IMAGE_WIDTH * 0.05), IMAGE_HEIGHT - int(IMAGE_HEIGHT * 0.05) - textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_COLOR, FONT_THICKNESS)
@@ -465,11 +500,11 @@ def annotating(img_path, img_name, video_extraction_dir):
             }
             save_to_json(info, "bbox", video_extraction_dir, ANNOTATION_FILES)
             annotation_id += 1
-        img = cv2.imread(img_path)
-
-        drawing_annotations(img)
-        # text_to_write = f"Click middle of detected box with correct ID - {object_id}"
-        show_image()
+        # img = cv2.imread(img_path)
+        # cv2.destroyAllWindows()
+        # drawing_annotations(img)
+        # # text_to_write = f"Click middle of detected box with correct ID - {object_id}"
+        # show_image()
 
       
     
@@ -728,10 +763,14 @@ def annotating(img_path, img_name, video_extraction_dir):
             bbox_mode = False
             already_passed = False
             object_id = 1
+            show_image()
             return
 
         elif key == 8: # "Backspace": Go back to previous image  
+            show_image()
+           
             handle_prev_img()
+            
             return
 
         elif key == ord('d'): # "D": Delete all annotations for the current image
@@ -956,7 +995,7 @@ if __name__ == "__main__":
         color = (r, g, b)
         ANNOTATION_COLORS.append(color)
 
-
+    coordinate_stack = {"img_name": None, "coordinates": None, "dimensions": None}
     # to get the sizing for putting text at appropiate places on the cv2 window
     textSize, baseline = cv2.getTextSize("test", cv2.FONT_HERSHEY_SIMPLEX, FONT_SCALE, FONT_THICKNESS)
     textSizeWidth, textSizeHeight = textSize
@@ -1032,17 +1071,17 @@ if __name__ == "__main__":
         img = cv2.imread(img_path)
         IMAGE_HEIGHT, IMAGE_WIDTH = img.shape[:2]
 
-        print("Initializing images...")
-        for img_n in range(len(imgs)):
-            img_path = os.path.join(current_dir, imgs[img_n])
-            img_name = os.path.basename(img_path)
-            img = cv2.imread(img_path)
-            show_image()
-            # win = gw.getWindowsWithTitle(img_name)[0]
-            # win.minimize()
+        # print("Initializing images...")
+        # for img_n in range(len(imgs)):
+        #     img_path = os.path.join(current_dir, imgs[img_n])
+        #     img_name = os.path.basename(img_path)
+        #     img = cv2.imread(img_path)
+        #     show_image()
+        #     # win = gw.getWindowsWithTitle(img_name)[0]
+        #     # win.minimize()
 
 
-            cv2.destroyAllWindows()
+        #     cv2.destroyAllWindows()
    
       
         print("Completed")
