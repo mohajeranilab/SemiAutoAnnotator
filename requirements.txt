@@ -13,7 +13,7 @@ termcolor==2.4.0
 # torch==2.0.1+cu117
 # torchaudio==2.0.2+cu117
 # torchvision==0.15.2+cu117
-# tqdm==4.66.2
-# ultralytics==8.2.21
+tqdm==4.66.2
+ultralytics==8.2.21
 screeninfo==0.8.1
 pygetwindow==0.0.9
