@@ -16,6 +16,8 @@ from sklearn.metrics import pairwise_distances_argmin_min
 from sklearn.metrics.pairwise import pairwise_distances
 from tkinter import filedialog
 from scipy.spatial import ConvexHull
+import sys
+from tqdm import tqdm
 
  
 def preprocess_image(img_path):
@@ -63,7 +65,13 @@ def create_features_list(model, image_paths, layer_index, sample_percentage):
 
     random.shuffle(image_paths)
     selected_paths = image_paths[:int(len(image_paths) * sample_percentage)]
-    for img_path in selected_paths:
+    for i in tqdm(range(len(selected_paths))):
+        original_stdout = sys.stdout
+
+# Redirect stdout to /dev/null or equivalent
+        sys.stdout = open(os.devnull, 'w')
+        img_path =  selected_paths[i]
+ 
         img = preprocess_image(img_path)
     
         features = extract_features(model, img, layer_index)
@@ -72,6 +80,8 @@ def create_features_list(model, image_paths, layer_index, sample_percentage):
             
             features_flattened = features.view(features.size(0), -1)
             features_dict[img_path.name] = features_flattened.cpu().numpy()
+
+        sys.stdout = original_stdout
 
     return features_dict
 
@@ -191,8 +201,10 @@ def cluster_and_plot(features_tsne, epsilon, min_samples, image_paths, image_dir
     plt.title('DBSCAN Clustering after t-SNE with Convex Hulls')
     plt.xlabel('t-SNE Component 1')
     plt.ylabel('t-SNE Component 2')
+    plot_save_path = os.path.join(f"{image_dir.parent}\\", "cluster_plot.jpg")
+    plt.savefig(plot_save_path, format='jpg', dpi=300)
     plt.show()
-
+  
     
     return cluster_centers
 
@@ -201,7 +213,7 @@ def export_features(features_dict, filename):
     np.save(filename, features_dict)
 
 
-def main(image_dir, model_path):
+def initialize_clustering(image_dir, model_path):
     global IMAGE_PATHS
     # MODEL_PATH = filedialog.askopenfilename(initialdir="/", title="SELECT MODEL/WEIGHTS FILE")
     # MODEL_PATH = Path("runs/detect/train37/weights/best.pt")
