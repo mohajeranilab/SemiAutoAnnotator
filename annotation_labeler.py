@@ -14,6 +14,7 @@ import pygetwindow as gw
 import screeninfo
 from tkinter import Tk, filedialog, messagebox
 import warnings 
+from tqdm import tqdm
 
 from clustering import *
 
