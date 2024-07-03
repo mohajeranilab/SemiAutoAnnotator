@@ -689,7 +689,7 @@ class VideoAnnotationTool():
                     is_empty = True
 
                     for annotation_file in self.annotation_files:
-                        with open(annotation_file, 'r') as f:
+                        with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
                             data = json.load(f)
             
                         if any(annotation["image_id"] == self.img_id for annotation in data["annotations"]):
@@ -706,7 +706,7 @@ class VideoAnnotationTool():
                         latest_time = None
                     
                     for annotation_file in self.annotation_files:
-                        with open(annotation_file, 'r') as f:
+                        with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
                             data = json.load(f)
                         
                         for i, annotation in enumerate(data["annotations"]):
@@ -717,7 +717,7 @@ class VideoAnnotationTool():
 
             
                     for annotation_file in self.annotation_files:
-                        with open(annotation_file, 'r') as f:
+                        with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
                             data = json.load(f)
                         
                         for i in range(len(data["annotations"])):
@@ -737,7 +737,7 @@ class VideoAnnotationTool():
                                     del data["annotations"][i]
                                 break
                         
-                        with open(annotation_file, 'w') as f:
+                        with open(self.video_manager.video_dir + "\\" + annotation_file, 'w') as f:
                             json.dump(data, f, indent=4)
                     self.cv2_img.set_image()
                     self.drawing_annotations()
@@ -1203,7 +1203,7 @@ class AnnotationManager():
     
 
 if __name__ == "__main__":
-    screen = screeninfo.get_monitors()[0]  # Assuming you want the primary monitor
+    screen = screeninfo.get_monitors()[0]  # primary monitor
     width, height = screen.width, screen.height
     screen_center_x = int((width - 700) / 2)
     screen_center_y = int((height - 500)/ 2)
