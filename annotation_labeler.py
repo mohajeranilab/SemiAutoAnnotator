@@ -385,11 +385,11 @@ class VideoAnnotationTool():
                 self.text_to_write = f"Bounding Box Mode - Feces"
             elif self.bbox_type == "normal":
                 self.text_to_write = f"Bounding Box Mode - {self.object_id}"
-            if start_x > x:
-                x = start_x
-            if start_y > y:
-                y = start_y
-            cv2.putText(self.cv2_img.get_image(), str(self.object_id), (x - 10, y), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+            
+            temp_x = start_x if start_x > x else x 
+            temp_y = start_y if start_y > y else y 
+            
+            cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 10, temp_y), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
             self.show_image()
             
         if event == cv2.EVENT_LBUTTONDOWN:
