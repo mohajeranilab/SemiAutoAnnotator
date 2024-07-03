@@ -817,9 +817,11 @@ class VideoAnnotationTool():
 
         # initializing constants 
         parser = argparse.ArgumentParser()
-        parser.add_argument('--frame_skip', type=int, default=50, help='Number of frames to skip')
+        parser.add_argument("--frame_skip", type=int, default=50, help="Number of frames to skip")
+        parser.add_argument("--model_path", type=str, default=None, help="Path to the model/weights file ")
         args = parser.parse_args()
         self.frame_skip = args.frame_skip
+        self.model_path = args.model_path
 
         self.annotation_files = ["bbox_annotations.json", "pose_annotations.json"]
         self.font_scale = 0.5
