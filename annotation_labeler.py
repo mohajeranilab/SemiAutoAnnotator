@@ -116,7 +116,7 @@ class VideoManager():
         print(f"Extracted {extracted_count} new frames to 'extracted_frames'")
 
 
-        self.model_path = filedialog.askopenfilename(initialdir="/", title="SELECT MODEL/WEIGHTS FILE")
+        #self.model_path = filedialog.askopenfilename(initialdir="/", title="SELECT MODEL/WEIGHTS FILE")
 
         root.destroy()
       
@@ -198,7 +198,6 @@ class VideoAnnotationTool():
         self.click_count = 0
         self.is_hidden = False
         self.annotations_exists = None
-        self.conf_threshold = None
         self.text_to_write = None
 
         self.annotation_info = None
@@ -363,7 +362,7 @@ class VideoAnnotationTool():
                         for corner_x, corner_y in corner_points:
                             cv2.rectangle(self.cv2_img.get_image(), (corner_x - self.corner_size//2 , corner_y - self.corner_size//2), (corner_x + self.corner_size//2, corner_y + self.corner_size//2), self.annotation_colors[annotation["object_id"]], 2)
                         cv2.rectangle(self.cv2_img.get_image(), (annotation["bbox"][0], annotation["bbox"][1]), (annotation["bbox"][2], annotation["bbox"][3]), self.annotation_colors[annotation["object_id"]], 2)
-                        cv2.putText(self.cv2_img.get_image(), str(annotation["object_id"]), (annotation["bbox"][2] - 10, annotation["bbox"][3]), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+                        cv2.putText(self.cv2_img.get_image(), str(annotation["object_id"]), (annotation["bbox"][2] - 20, annotation["bbox"][3] - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
                         if annotation["type"] == "detected bounding_box":
                             cv2.putText(self.cv2_img.get_image(), f"{annotation['conf']:.2f}", (annotation["bbox"][0], annotation["bbox"][3]), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
                     elif annotation_type == "pose":
@@ -441,8 +440,6 @@ class VideoAnnotationTool():
                                         self.keypoint_value = keypoint[1] 
                                 break
                             else:
-
-                
                         
                                 top_left_coord = (annotation_data["bbox"][0], annotation_data["bbox"][1])
                                 top_right_coord = (annotation_data["bbox"][2], annotation_data["bbox"][1])
@@ -494,9 +491,9 @@ class VideoAnnotationTool():
                                     move_bottom_left = False
                                     move_bottom_right = False
                                     move_pose_point = False
-                                    break
+                                    
                 self.click_count += 1
-                 
+         
         elif event == cv2.EVENT_LBUTTONUP:
             self.click_count = 0
 
@@ -751,7 +748,7 @@ class VideoAnnotationTool():
                     temp_x = self.temp_bbox_coords[2] if self.temp_bbox_coords[2] > x else x 
                     temp_y = self.temp_bbox_coords[3] if self.temp_bbox_coords[3] > y else y 
                     
-                    cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 10, temp_y), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+                    cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
 
                 elif move_top_right:
                     x1, y1 = self.temp_bbox_coords[0], y  # Top-left corner of the main rectangle
@@ -774,7 +771,7 @@ class VideoAnnotationTool():
                     temp_x = x2 if x2 > x1 else x1 
                     temp_y = y2 if y2 > y1 else y1 
                     
-                    cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 10, temp_y), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+                    cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
 
                 elif move_bottom_left:
                     x1, y1 = x, self.temp_bbox_coords[1]
@@ -791,7 +788,7 @@ class VideoAnnotationTool():
                     temp_x = x2 if x2 > x1 else x1 
                     temp_y = y2 if y2 > y1 else y1 
                     
-                    cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 10, temp_y), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+                    cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
 
 
                 elif move_bottom_right:
@@ -807,7 +804,7 @@ class VideoAnnotationTool():
                     temp_x = x2 if x2 > x1 else x1 
                     temp_y = y2 if y2 > y1 else y1 
                     
-                    cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 10, temp_y), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+                    cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
 
 
                 self.show_image()
@@ -862,7 +859,7 @@ class VideoAnnotationTool():
             temp_x = start_x if start_x > x else x 
             temp_y = start_y if start_y > y else y 
             
-            cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 10, temp_y), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+            cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
             self.show_image()
             
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -1032,8 +1029,18 @@ class VideoAnnotationTool():
                         break
             
 
-            if self.is_detected == False and self.video_manager.model_path != "" and self.video_manager.model_path != None and not isinstance(self.video_manager.model_path, tuple) and self.model_detecting == "On":
-                self.model_manager = ModelManager(self.model, self.cv2_img.path, self.cv2_img, self.conf_threshold, self.cv2_img.width, self.cv2_img.height, self.img_id, self.object_id, self.annotation_manager, self.video_manager, self.annotation_files)
+            if self.is_detected == False and self.model_manager.model_path != "" and self.model_manager.model_path != None and not isinstance(self.model_manager.model_path, tuple) and self.model_detecting == "On":
+                
+                self.model_manager.img = self.cv2_img
+                self.model_manager.img_path = self.cv2_img.path
+                self.model_manager.img_width = self.cv2_img.width
+                self.model_manager.img_height = self.cv2_img.height
+                self.model_manager.img_id = self.img_id
+                self.model_manager.object_id = self.object_id
+                self.model_manager.annotation_manager = self.annotation_manager
+                self.model_manager.video_manager = self.video_manager
+                
+                print(dir(self.model_manager))
                 self.model_manager.predicting()
               
     
@@ -1317,19 +1324,22 @@ class VideoAnnotationTool():
       
 
         # initializing constants 
+        self.model_manager = ModelManager()
         parser = argparse.ArgumentParser()
         parser.add_argument("--frame_skip", type=int, default=50, help="Number of frames to skip")
         parser.add_argument("--model_path", type=str, default=None, help="Path to the model/weights file ")
         args = parser.parse_args()
         self.frame_skip = args.frame_skip
-        self.model_path = args.model_path
+        # self.model_path = args.model_path
+        self.model_manager.model_path = args.model_path
 
         self.annotation_files = ["bbox_annotations.json", "pose_annotations.json"]
+        self.model_manager.annotation_files = self.annotation_files
         self.font_scale = 0.5
         self.font_thickness = 1
         self.font_color = (255, 255, 0)
         self.annotation_colors = []
-        self.conf_threshold = 0.25
+     
         
         screen = screeninfo.get_monitors()[0]  # Assuming you want the primary monitor
         width, height = screen.width, screen.height
@@ -1369,14 +1379,16 @@ class VideoAnnotationTool():
         dir_list = None
    
         # if a model is selected, otherwise let the user annotate with no model assistance
-        if not isinstance(self.video_manager.model_path, tuple) and self.video_manager.model_path != "" and self.video_manager.model_path != None:
+        if not isinstance(self.model_manager.model_path, tuple) and self.model_manager.model_path != "" and self.model_manager.model_path != None:
             print("CUDA available?: ", torch.cuda.is_available())
             device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-            self.model = YOLO(self.video_manager.model_path)
-            self.model.to(device)
+            #self.model = YOLO(self.video_manager.model_path)
+            self.model_manager.model = YOLO(self.model_manager.model_path)
+            #self.model.to(device)
+            self.model_manager.model.to(device)
 
             # comment this to turn off clustering 
-            # initialize_clustering(Path(self.image_dir), self.video_manager.model_path)
+            # initialize_clustering(Path(self.image_dir), self.model_manager.model_path)
             # dir_list = os.listdir("used_videos/" + video_name.split(".")[0] + "/clusters/")
             # for i, dir in enumerate(dir_list):
             #     dir_list[i] = "used_videos/" + video_name.split(".")[0] + "/clusters/" + dir + "/" 
@@ -1467,18 +1479,9 @@ class VideoAnnotationTool():
         cv2.destroyAllWindows()
 
 class ModelManager:
-    def __init__(self, model, image_path, img, conf_threshold, img_width, img_height, image_id, object_id, annotation_manager, video_manager, annotation_files):
-        self.image_path = image_path
-        self.conf_threshold = conf_threshold
-        self.model = model
-        self.img_width = img_width
-        self.img_height = img_height
-        self.img = img
-        self.image_id = image_id 
-        self.object_id = object_id
-        self.annotation_manager = annotation_manager
-        self.video_manager = video_manager
-        self.annotation_files = annotation_files
+    def __init__(self):
+        
+        self.conf_threshold = 0.25 
 
     def retrain(self):
         """
@@ -1590,7 +1593,7 @@ class ModelManager:
    
     def predicting(self):
         
-        bbox_values = self.model.predict(self.image_path, conf=self.conf_threshold)[0].boxes
+        bbox_values = self.model.predict(self.img_path, conf=self.conf_threshold)[0].boxes
         num_of_objects = len(bbox_values.conf)
         conf_list = []
         for i in range(num_of_objects):
@@ -1602,16 +1605,16 @@ class ModelManager:
             
             info = {
                 "images": {
-                    "id": self.image_id,
-                    "file_name": self.image_path,
+                    "id": self.img_id,
+                    "file_name": self.img_path,
                     "image_height": self.img_height,
                     "image_width": self.img_width
                 },
                 "annotation": {
                     "id": self.annotation_manager.id,
                     "bbox": [pred_x1, pred_y1, pred_x2, pred_y2],
-                    "image_id":self.image_id,
-                    "object_id":self.object_id,
+                    "image_id":self.img_id,
+                    "object_id":0,
                     "iscrowd": 0,
                     "area": (pred_y2 - pred_y1) * (pred_x2 - pred_x1),
                     "type": "detected bounding_box",
