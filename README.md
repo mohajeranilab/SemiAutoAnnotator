@@ -19,9 +19,9 @@ The user will start annotating images and will be assisted by a model that provi
     pip install -r requirements.txt
 
 ## Usage
-Run the annotation_labeler.py file, it will give you two file explorer windows to select the video file you want to annotate (it will extract frames for you), and the model/weights file to help you annotate
+Run the annotation_labeler.py file, two optional arguments can be passes, --frame_skip (default: 50), and --model_path (default: None). It is necessary to specify a path to the model/weights file if you want the assistance of a model. Aftewards, the program will give you a file explorer window to select the video file you want to annotate (it will extract frames for you)
 
-If you would like to annotate without a model assisting you, simply press Cancel or Exit out of the file explorer prompting you to choose a model/weights file.
+
 "In the 'used_videos/' directory, a folder will be created for each selected video, containing the video file itself along with subfolders for extracted frames and JSON annotations. The structure will look like this:
 ```plaintext
 used_videos/
@@ -72,6 +72,3 @@ labeler_dataset/
         └── img_2.txt
 ```
 
-## Important Notes
-
-If you want to change how many frames you skip to shorten annotation, change the FRAME_SKIP variable
