@@ -185,7 +185,7 @@ class VideoManager():
 
         print("Video has been created called output_video")
 
-class VideoAnnotationTool():
+class AnnotationTool():
     def __init__(self):
         self.image_dir_path = None
         self.annotation_files = ["bbox_annotations.json", "pose_annotations.json"]
@@ -1039,8 +1039,7 @@ class VideoAnnotationTool():
                 self.model_manager.object_id = self.object_id
                 self.model_manager.annotation_manager = self.annotation_manager
                 self.model_manager.video_manager = self.video_manager
-                
-                print(dir(self.model_manager))
+             
                 self.model_manager.predicting()
               
     
@@ -1601,7 +1600,7 @@ class ModelManager:
             conf_list.append(conf)
             pred_x1, pred_y1, pred_x2, pred_y2 = map(int, bbox_values.xyxy[i].tolist())
 
-            self.annotation_manager.id = VideoAnnotationTool.get_id(self.annotation_files, self.video_manager, "annotations")
+            self.annotation_manager.id = AnnotationTool.get_id(self.annotation_files, self.video_manager, "annotations")
             
             info = {
                 "images": {
@@ -1711,5 +1710,5 @@ if __name__ == "__main__":
     width, height = screen.width, screen.height
     screen_center_x = int((width - 700) / 2)
     screen_center_y = int((height - 500)/ 2)
-    tool = VideoAnnotationTool()
+    tool = AnnotationTool()
     tool.run_tool()
