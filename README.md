@@ -55,7 +55,7 @@ The following keypresses provide different results when the image window is open
 - “R”. Retrain. When “R” is pressed, a file explorer window will appear and the user can select the video folders they want to train on if it has annotated frames. the model will be retrained using the current annotations made. It will exit the program and enter the training mode. 
 - “V”. Make Video. When “V” is pressed, a file explorer window will appear and the user can select the video folder they want to create a clip with the annotations made for that video, the clip will be saved as “output_video.mp4”.
 - “M”. Toggle Model. When “M” is pressed, the model will either be turned off or on, the default is set to on.
-
+- "E". Editing Mode. When "E" is pressed, the user will now be able to edit the annotations made. To edit the bbox annotations, click and drag one of the four squares
 
 
 
