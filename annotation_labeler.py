@@ -217,6 +217,7 @@ class AnnotationTool():
         self.font_color = (255, 255, 0)
         self.window_info = {"img_name": None, "coordinates": None, "dimensions": None}
         self.screen_center_x = None
+        self.editing_mode = False
         self.screen_center_y = None
         self.bbox_mode = False
         self.pose_mode = False
@@ -375,45 +376,9 @@ class AnnotationTool():
     def editing(self, event, x, y, flags, param):
         global move_top_left, move_top_right, move_bottom_right, move_bottom_left, move_pose_point, file_to_dump
 
-        # draw boxes around the corners that will be the +- for error in moving the bounding box
-   
-
-
-                #  info = {
-                #             "images": {
-                #                 "id": self.img_id,
-                #                 "file_name": self.cv2_img.path,
-                #                 "image_height": self.cv2_img.height,
-                #                 "image_width": self.cv2_img.width
-                #             },
-                #             "annotation": {
-                #                 "id": self.annotation_manager.id,
-                #                 "keypoints": [],
-                #                 "image_id":self.img_id,
-                #                 "object_id":self.object_id,
-                #                 "iscrowd": 0,
-                #                 "type": "pose",
-                #                 "conf": 1,
-                #                 "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-                #             }
-         
-                    #     "iscrowd": 0,
-                
-                
-                    #     "conf": 1,
-                    #     "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        
-                    # }
-                        # Delete the annotation_data from the list
-                        
-                    
-                      # Exit the loop assuming each id is unique
-
-            
-
- 
+             
         if event == cv2.EVENT_LBUTTONDOWN:
+            breakout = False
             if self.click_count == 0:
                 for annotation_file in self.annotation_files:
                     with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
@@ -424,9 +389,11 @@ class AnnotationTool():
                             img_id = image_data["id"]
                     
                     for annotation_data in data["annotations"]:
+                        if breakout:
+                            break
+
                         if annotation_data["image_id"] == img_id:
                             if annotation_data["type"] == "pose":
-                                self.annotation_manager.id = annotation_data["id"]
                                 self.temp_keypoints = annotation_data["keypoints"]
                                 move_pose_point = True
                                 move_top_left = False
@@ -435,10 +402,18 @@ class AnnotationTool():
                                 move_bottom_right = False
 
                                 for keypoint in self.temp_keypoints:
-                                    if  keypoint[1][0] - 5 < x <keypoint[1][0] + 5 and keypoint[1][1] - 5 < y < keypoint[1][1] + 5:
+                                    if  keypoint[1][0] - 5 < x < keypoint[1][0] + 5 and keypoint[1][1] - 5 < y < keypoint[1][1] + 5:
+                         
                                         self.keypoint_type = keypoint[0]
                                         self.keypoint_value = keypoint[1] 
-                                break
+                                        
+                                        self.annotation_manager.id = annotation_data["id"]
+                                        breakout = True
+                                        break
+                                    else:
+                                        self.keypoint_type = None
+                                        self.keypoint_value = None
+                                
                             else:
                         
                                 top_left_coord = (annotation_data["bbox"][0], annotation_data["bbox"][1])
@@ -493,14 +468,17 @@ class AnnotationTool():
                                     move_pose_point = False
                                     
                 self.click_count += 1
+
+
          
         elif event == cv2.EVENT_LBUTTONUP:
             self.click_count = 0
 
             if move_pose_point:
-                for keypoint in self.temp_keypoints:
+                for i, keypoint in enumerate(self.temp_keypoints):
                     if keypoint[0] == self.keypoint_type and keypoint[1] == self.keypoint_value:
-                        keypoint[1] = (x, y)
+                        #keypoint[1] = (x, y)
+                        self.temp_keypoints[i][1] = (x, y)
                 info = {
                     "images": {
                     "id": self.img_id,
@@ -697,15 +675,17 @@ class AnnotationTool():
                     with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
                         data = json.load(f)
             
-                
+
                     for i, annotation_data in enumerate(data["annotations"]):
+                    
                         if annotation_data["id"] == self.annotation_manager.id:
                             self.img_id = annotation_data["image_id"]
                             self.object_id = annotation_data["object_id"]
                             self.annotation_manager.id = annotation_data["id"]
                             if annotation_data["type"] == "pose":
                                 self.temp_keypoints = annotation_data["keypoints"]
-                
+               
+
                                 file_to_dump = annotation_file
                                 del data["annotations"][i]
                                 with open(self.video_manager.video_dir + "\\" + file_to_dump, 'w') as f:
@@ -722,11 +702,17 @@ class AnnotationTool():
                                 with open(self.video_manager.video_dir + "\\" + file_to_dump, 'w') as f:
                                     json.dump(data, f, indent=4)
                                 break
+          
                 self.drawing_annotations()
-
+   
                 if move_pose_point: 
-                    cv2.circle(self.cv2_img.get_image(), (x, y), 5, self.annotation_colors[self.object_id], -1)
-                    cv2.putText(self.cv2_img.get_image(), self.pose_type.capitalize(), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+                    for keypoint in self.temp_keypoints:
+                        if keypoint[0] != self.keypoint_type or keypoint[1] != self.keypoint_value:
+                            cv2.circle(self.cv2_img.get_image(), (keypoint[1][0], keypoint[1][1]), 5, self.annotation_colors[self.object_id], -1)
+                            cv2.putText(self.cv2_img.get_image(), keypoint[0].capitalize(), (keypoint[1][0], keypoint[1][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+                    if self.keypoint_type != None and self.keypoint_value != None:
+                        cv2.circle(self.cv2_img.get_image(), (x, y), 5, self.annotation_colors[self.object_id], -1)
+                        cv2.putText(self.cv2_img.get_image(), self.keypoint_type.capitalize(), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
 
                 elif move_top_left:
                     x1, y1 = x, y  # Top-left corner of the main rectangle
@@ -1051,12 +1037,7 @@ class AnnotationTool():
          
             while True:
                 key = cv2.waitKey(1)
-                if self.bbox_mode:
-                    cv2.setMouseCallback(self.cv2_img.name, self.drawing_bbox)
-                elif self.pose_mode:
-                    cv2.setMouseCallback(self.cv2_img.name, self.drawing_pose)
-                else:
-                    cv2.setMouseCallback(self.cv2_img.name, self.editing)
+                
         
     
                 if key == 27 or cv2.getWindowProperty(self.cv2_img.name, cv2.WND_PROP_VISIBLE) < 1: # "Escape": Exits the program 
@@ -1064,7 +1045,27 @@ class AnnotationTool():
                 
 
                     sys.exit()
-                
+
+                elif key == ord('e'):
+                    if self.editing_mode == False:
+                        self.editing_mode = True
+                        self.click_count = 0
+                        self.cv2_img.set_image()
+                        self.drawing_annotations()
+                        self.text_to_write = "Editing"
+                        self.show_image()
+                        self.pose_mode = False
+                        self.bbox_mode = False
+
+                        cv2.setMouseCallback(self.cv2_img.name, self.editing)
+
+                    else:
+                        self.editing_mode = False
+                        self.text_to_write = None
+                        self.cv2_img.set_image()
+                        self.drawing_annotations()
+                        self.show_image()
+                        cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
                 elif key == ord('r'):
                     self.model_manager.retrain()
             
@@ -1093,6 +1094,7 @@ class AnnotationTool():
                         self.text_to_write = f"Bounding Box Mode - {self.object_id}"
                         
                         self.pose_mode = False
+                        self.editing_mode = False
                         self.bbox_type = "normal"
                         self.show_image()
                         cv2.setMouseCallback(self.cv2_img.name, self.drawing_bbox)  # Enable mouse callback for keypoint placement
@@ -1119,6 +1121,7 @@ class AnnotationTool():
                         self.show_image()
                     
                         self.bbox_mode = False
+                        self.editing_mode = False
                         self.pose_type = ""
                         self.annotation_manager.id = self.get_id(self.annotation_files, self.video_manager, "annotations")
             
@@ -1664,8 +1667,6 @@ class AnnotationManager():
             annotated_image_ids = {annotation["image_id"] for annotation in data["annotations"]}
             
             
-
-
             data["images"] = [image_data for image_data in data["images"] if image_data["id"] in annotated_image_ids]
             if annotation_file == "pose_annotations.json":
                 data["annotations"] = [annotation_data for annotation_data in data["annotations"] if annotation_data["keypoints"]]
