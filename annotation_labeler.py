@@ -18,6 +18,12 @@ from tqdm import tqdm
 
 from clustering import *
 
+
+import cv2
+from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QComboBox, QPushButton, QWidget, QVBoxLayout
+from PyQt5.QtCore import Qt
+import sys
+
 class CV2Image():
     def __init__(self, path, name):
         if path:
@@ -210,10 +216,10 @@ class AnnotationTool():
         self.model_detecting = "On"
         self.annotation_colors = []
         self.img_id = None
-        self.corner_size = 15
+        self.corner_size = 10
         self.model = None
         self.font_scale = 0.5
-        self.font_thickness = 1
+        self.font_thickness = 0.5
         self.font_color = (255, 255, 0)
         self.window_info = {"img_name": None, "coordinates": None, "dimensions": None}
         self.screen_center_x = None
@@ -222,9 +228,11 @@ class AnnotationTool():
         self.bbox_mode = False
         self.pose_mode = False
         self.bbox_type = None
+        self.pyqtwindow = PyQtWindow()
         self.pose_type = None
         self.current_dir = None
         self.imgs = None 
+        self.pyqtwindow.setWindowFlags(Qt.WindowStaysOnTopHint)
        
         # Define other necessary attributes
 
@@ -294,7 +302,7 @@ class AnnotationTool():
         cv2.resizeWindow(self.cv2_img.name, (window_width, window_height))  
     
         cv2.moveWindow(self.cv2_img.name, x, y)
-
+        self.pyqtwindow.move_to_coordinates(x - 200, y)
 
         if self.text_to_write:
             cv2.putText(self.cv2_img.get_image(), self.text_to_write, (int(self.cv2_img.width * 0.05), self.cv2_img.height - int(self.cv2_img.height * 0.05) - self.textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
@@ -302,6 +310,12 @@ class AnnotationTool():
         cv2.putText(self.cv2_img.get_image(), f"Model: {self.model_detecting}", (int(self.cv2_img.width * 0.75), self.cv2_img.height - int(self.cv2_img.height * 0.05) - self.textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
         
         cv2.imshow(self.cv2_img.name, self.cv2_img.get_image())
+        cv2.setWindowProperty(self.cv2_img.name, cv2.WND_PROP_TOPMOST, 1)
+        self.pyqtwindow.show()
+        
+    @staticmethod
+    def move_to(window_name, x, y):
+        cv2.moveWindow(window_name, x, y)
 
     def handle_prev_img(self):
 
@@ -310,9 +324,6 @@ class AnnotationTool():
         self.already_passed = True
         self.click_count = 0
 
-        # if self.img_num > 0:
-        #     self.img_num -= 2 
-        #     cv2.destroyAllWindows()
 
         if self.img_num == 0:
             self.img_num -= 1
@@ -394,7 +405,11 @@ class AnnotationTool():
 
                         if annotation_data["image_id"] == img_id:
                             if annotation_data["type"] == "pose":
-                                self.temp_keypoints = annotation_data["keypoints"]
+                                if len(annotation_data["keypoints"]) == 0:
+                                    continue
+                                
+                                self.temp_keypoints = annotation_data["keypoints"] 
+                                
                                 move_pose_point = True
                                 move_top_left = False
                                 move_top_right = False
@@ -402,7 +417,7 @@ class AnnotationTool():
                                 move_bottom_right = False
 
                                 for keypoint in self.temp_keypoints:
-                                    if  keypoint[1][0] - 5 < x < keypoint[1][0] + 5 and keypoint[1][1] - 5 < y < keypoint[1][1] + 5:
+                                    if keypoint[1][0] - 5 < x < keypoint[1][0] + 5 and keypoint[1][1] - 5 < y < keypoint[1][1] + 5:
                          
                                         self.keypoint_type = keypoint[0]
                                         self.keypoint_value = keypoint[1] 
@@ -1034,10 +1049,11 @@ class AnnotationTool():
             self.text_to_write = None 
             self.show_image()
 
-         
+            self.pyqtwindow.window_name = self.cv2_img.name
             while True:
                 key = cv2.waitKey(1)
-                
+                if self.pyqtwindow.button_states["bbox"]:
+                    key = ord('b')
         
     
                 if key == 27 or cv2.getWindowProperty(self.cv2_img.name, cv2.WND_PROP_VISIBLE) < 1: # "Escape": Exits the program 
@@ -1046,7 +1062,11 @@ class AnnotationTool():
 
                     sys.exit()
 
-                elif key == ord('e'):
+                elif key == ord('e') or self.pyqtwindow.button_states["editing"]:
+                    if self.pyqtwindow.button_states["editing"]:
+                        self.pyqtwindow.button_states["editing"] = False
+                        #self.pyqtwindow.editing_button.setChecked(False)  # Uncheck the button visually
+                        
                     if self.editing_mode == False:
                         self.editing_mode = True
                         self.click_count = 0
@@ -1066,27 +1086,52 @@ class AnnotationTool():
                         self.drawing_annotations()
                         self.show_image()
                         cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
-                elif key == ord('r'):
+                elif key == ord('r') or self.pyqtwindow.button_states["retrain"]:
+                    if self.pyqtwindow.button_states["retrain"]:
+                        self.pyqtwindow.button_states["retrain"] = False
                     self.model_manager.retrain()
-            
-                    
-                elif key == ord('j'): # "J": Previous object ID
-                    
-                    self.object_id -= 1 if self.object_id > 1 else 0 
-                    self.update_img_with_id()
-                elif key == ord('v'): # make video
-                    
-                    self.make_video()
+                
 
-                elif key == ord('m'): # "M": Turns model detection on or off, as shown on the image
+
+                elif key == ord('v') or self.pyqtwindow.button_states["make_video"]: # make video
+                    if self.pyqtwindow.button_states["make_video"]:
+                        self.pyqtwindow.button_states["make_video"] = False
+                    
+                    self.video_manager.make_video()
+
+                elif key == ord('m') or self.pyqtwindow.button_states["toggle_model"]: # "M": Turns model detection on or off, as shown on the image
+                    if self.pyqtwindow.button_states["toggle_model"]:
+                        self.pyqtwindow.button_states["toggle_model"] = False
+                        #self.pyqtwindow.toggle_model_button.setChecked(False)  # Uncheck the button visually
+
+                    
                     self.cv2_img.set_image()
                     self.model_detecting = "Off" if self.model_detecting == "On" else "On"
                     self.drawing_annotations()
                     self.show_image()
 
-                elif key == ord('b'): # bbox mode
-                   
+
+
+
+                    
+                elif key == ord('j') or self.pyqtwindow.button_states["decrement_id"]: # "J": Previous object ID
+                    if self.pyqtwindow.button_states["decrement_id"]:
+                        self.pyqtwindow.button_states["decrement_id"]
+                        
+
+
+                    
+                    self.object_id -= 1 if self.object_id > 1 else 0 
+                    self.update_img_with_id()
+                
+
+                elif key == ord('b') or self.pyqtwindow.button_states["bbox"]: # bbox mode
+                    if self.pyqtwindow.button_states["bbox"]:
+                        self.pyqtwindow.button_states["bbox"] = False  # Reset the button state after processing it once
+                        # self.pyqtwindow.bbox_button.setChecked(False)  # Uncheck the button visually
+
                     if self.bbox_mode == False: 
+                    
                         self.bbox_mode = True
                         self.click_count = 0
                         self.cv2_img.set_image()
@@ -1110,7 +1155,11 @@ class AnnotationTool():
                         self.show_image()
                         cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
                 
-                elif key == ord('p'): # pose mode
+                elif key == ord('p') or self.pyqtwindow.button_states["pose"]: # pose mode
+                    if self.pyqtwindow.button_states["pose"]:
+                        self.pyqtwindow.button_states["pose"] = False
+                        #self.pyqtwindow.pose_button.setChecked(False)  # Uncheck the button visually
+
                     if self.pose_mode == False:
                         self.pose_mode = True
                         self.click_count = 0
@@ -1154,7 +1203,10 @@ class AnnotationTool():
                         cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
 
 
-                elif key == 13: # enter; next image in dataset
+                elif key == 13 or self.pyqtwindow.button_states["next_img"]:
+                    if self.pyqtwindow.button_states["next_img"]: # enter; next image in dataset  
+                        self.pyqtwindow.button_states["next_img"] = False
+                        
                     #cv2.destroyAllWindows()
                     self.pose_mode = False
                     self.bbox_mode = False
@@ -1164,12 +1216,17 @@ class AnnotationTool():
                     cv2.destroyAllWindows()
                     return
 
-                elif key == 8: # backspace; prev_img 
+                elif key == 8 or self.pyqtwindow.button_states["previous_img"]:
+                    if self.pyqtwindow.button_states["previous_img"]:
+                        self.pyqtwindow.button_states["previous_img"] = False # backspace; prev_img 
                     self.show_image()
                     self.handle_prev_img()
                     return
 
-                elif key == ord('d'): # delete all annotations for an image
+                elif key == ord('d') or self.pyqtwindow.button_states["delete"]: # delete all annotations for an image
+                    if self.pyqtwindow.button_states["delete"]:
+                        self.pyqtwindow.button_states["delete"] = False
+                        
                     for annotation_file in self.annotation_files:
                         with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
                             data = json.load(f)
@@ -1186,7 +1243,11 @@ class AnnotationTool():
                     self.pose_mode = False
                     self.object_id = 1
 
-                elif key == 26: # ctrl + z; undo
+                elif key == 26 or self.pyqtwindow.button_states["undo"]: # ctrl + z; undo
+                    if self.pyqtwindow.button_states["undo"]:
+                        self.pyqtwindow.button_states["undo"] = False
+                        
+                        
                     is_empty = True
 
                     for annotation_file in self.annotation_files:
@@ -1263,7 +1324,10 @@ class AnnotationTool():
                     self.text_to_write = mode_text
                     self.show_image()
                     
-                elif key == ord('n'): # next mouse ID
+                elif key == ord('n') or self.pyqtwindow.button_states["next_img"]: # next mouse ID
+                    if self.pyqtwindow.button_states["next_img"]:
+                        self.pyqtwindow.button_states["next_img"] = False
+              
                     self.object_id += 1
 
                     self.update_img_with_id()
@@ -1307,7 +1371,7 @@ class AnnotationTool():
                 }
 
                     for keybind, p_label in pose_options.items():
-                        if key == keybind:
+                        if key == keybind or self.pyqtwindow.button_states[p_label.lower()]:
                             self.cv2_img.set_image()
                             self.drawing_annotations()
                             self.text_to_write = f"Pose Mode - {p_label} - {self.object_id}"
@@ -1319,11 +1383,14 @@ class AnnotationTool():
 
 
         
-        self.img_num += 1
-        cv2.destroyAllWindows()
+     
 
     def run_tool(self):
       
+        app = QApplication(sys.argv) #
+        # self.pyqtwindow.show()
+
+
 
         # initializing constants 
         self.model_manager = ModelManager()
@@ -1332,7 +1399,7 @@ class AnnotationTool():
         parser.add_argument("--model_path", type=str, default=None, help="Path to the model/weights file ")
         args = parser.parse_args()
         self.frame_skip = args.frame_skip
-        # self.model_path = args.model_path
+       
         self.model_manager.model_path = args.model_path
 
         self.annotation_files = ["bbox_annotations.json", "pose_annotations.json"]
@@ -1443,7 +1510,7 @@ class AnnotationTool():
                     imagepath = os.path.join(self.current_dir, self.imgs[int(self.img_num)])
                     imagename = os.path.basename(imagepath)
                     self.cv2_img = CV2Image(imagepath, imagename)
-            
+                    self.pyqtwindow.window_name = self.cv2_img.name
                     if int(((self.cv2_img.name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
                       
                         self.cv2_img = CV2Image(imagepath, imagename)
@@ -1479,7 +1546,7 @@ class AnnotationTool():
             self.img_num = 0  # reset img_num for the next directory    
          
         cv2.destroyAllWindows()
-
+        sys.exit(app.exec_()) # 
 class ModelManager:
     def __init__(self):
         
@@ -1705,11 +1772,213 @@ class AnnotationManager():
         with open(self.video_dir + "\\" + self.annotation_files[file_index], 'w') as f:
             json.dump(data, f, indent=4)
     
+class PyQtWindow(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.window_name = None
 
+
+        self.button_states = {
+            "bbox": False,
+            "pose": False,
+            "editing": False,
+            "delete": False,
+            "undo": False,
+            "toggle_model": False,
+            "increment_id": False,
+            "decrement_id": False,
+            "next_img": False,
+            "previous_img": False,
+            "retrain": False,
+            "make_video": False,
+            "head": False,
+            "tail": False,
+            "neck": False,
+            "r hand": False,
+            "l hand": False,
+            "r leg": False,
+            "l leg": False
+        }
+
+        
+
+        # add the additonal if conditions to the key presses #######################################
+        self.setWindowTitle("PyQt Window")
+        self.setGeometry(400, 100, 200, 480)  # Set geometry (x, y, width, height)
+        self.original_buttons()
+        # # Create buttons
+        # # Create a central widget to hold everything
+        # central_widget = QWidget(self)
+        # self.setCentralWidget(central_widget)
+
+        # # Create a vertical layout for the central widget
+        # self.layout = QVBoxLayout(central_widget)
+        # button_names = [
+        #     "Bounding Box", "Pose", "Editing", "Delete", "Undo", "Toggle Model",
+        #     "Increment ID", "Decrement ID", "Next Image", "Previous Image",
+        #     "Retrain", "Make Video"
+        # ]
+
+ 
+
+        # self.bbox_button = QPushButton("Bounding Box", self)
+        # self.bbox_button.setCheckable(True)
+        # self.bbox_button.clicked.connect(lambda: self.on_button_clicked("bbox"))
+        # self.layout.addWidget(self.bbox_button)
+
+        # self.pose_button = QPushButton("Pose", self)
+        # self.pose_button.setCheckable(True)
+        # self.pose_button.clicked.connect(lambda: self.on_button_clicked("pose"))
+        # self.layout.addWidget(self.pose_button)
+
+        # self.editing_button = QPushButton("Editing", self)
+        # self.editing_button.setCheckable(True)
+        # self.editing_button.clicked.connect(lambda: self.on_button_clicked("editing"))
+        # self.layout.addWidget(self.editing_button)
+
+        # self.toggle_model_button = QPushButton("Toggle Model", self)
+        # self.toggle_model_button.setCheckable(True)
+        # self.toggle_model_button.clicked.connect(lambda: self.on_button_clicked("toggle_model"))
+        # self.layout.addWidget(self.toggle_model_button)
+
+
+        # for i, name in enumerate(button_names):
+        #     if name not in ["Bounding Box", "Pose", "Editing", "Toggle Model"]:
+                
+        #         self.button = QPushButton(name, self)
+        #         self.button.setCheckable(False)
+        #         button_state_key = list(self.button_states.keys())[i]  # Get the corresponding key
+        #         self.button.clicked.connect(lambda state, key=button_state_key: self.on_button_clicked(key))
+        #         self.layout.addWidget(self.button)
+           
+
+        # self.setCentralWidget(central_widget)
+
+
+    def original_buttons(self):
+
+        central_widget = QWidget(self)
+        self.setCentralWidget(central_widget)
+
+        # Create a vertical layout for the central widget
+        self.layout = QVBoxLayout(central_widget)
+        button_names = [
+            "Bounding Box", "Pose", "Editing", "Delete", "Undo", "Toggle Model",
+            "Increment ID", "Decrement ID", "Next Image", "Previous Image",
+            "Retrain", "Make Video", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"
+        ]
+
+ 
+
+        self.bbox_button = QPushButton("Bounding Box", self)
+        self.bbox_button.setCheckable(True)
+        self.bbox_button.clicked.connect(lambda: self.on_button_clicked("bbox"))
+        self.layout.addWidget(self.bbox_button)
+
+        self.pose_button = QPushButton("Pose", self)
+        self.pose_button.setCheckable(True)
+        self.pose_button.clicked.connect(lambda: self.on_button_clicked("pose"))
+        self.layout.addWidget(self.pose_button)
+
+        self.editing_button = QPushButton("Editing", self)
+        self.editing_button.setCheckable(True)
+        self.editing_button.clicked.connect(lambda: self.on_button_clicked("editing"))
+        self.layout.addWidget(self.editing_button)
+
+        self.toggle_model_button = QPushButton("Toggle Model", self)
+        self.toggle_model_button.setCheckable(True)
+        self.toggle_model_button.clicked.connect(lambda: self.on_button_clicked("toggle_model"))
+        self.layout.addWidget(self.toggle_model_button)
+
+
+        for i, name in enumerate(button_names):
+            if name not in ["Bounding Box", "Pose", "Editing", "Toggle Model", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"]:
+                
+                self.button = QPushButton(name, self)
+                self.button.setCheckable(False)
+                button_state_key = list(self.button_states.keys())[i]  # Get the corresponding key
+                self.button.clicked.connect(lambda state, key=button_state_key: self.on_button_clicked(key))
+                self.layout.addWidget(self.button)
+           
+
+        self.setCentralWidget(central_widget)
+
+
+    def on_button_clicked(self, key):
+        
+        
+
+        if key == "pose" and self.button_states[key]:
+            self.button_states[key] = not self.button_states[key]
+    
+            self.original_buttons()
+            
+
+        elif key == "pose" and not self.button_states[key]:
+            self.button_states[key] = not self.button_states[key]
+           
+            self.pose_keypoint_buttons()
+            # # Clear layout to remove existing buttons
+            # for i in reversed(range(self.layout.count())):
+            #     layout_item = self.layout.itemAt(i)
+            #     if layout_item.widget() and layout_item.widget() != self.pose_button:
+            #         layout_item.widget().setParent(None)
+            # # Add additional buttons below the Pose button
+            # additional_buttons = ["Button A", "Button B", "Button C"]  # Example additional buttons
+            # for name in additional_buttons:
+            #     self.button = QPushButton(name, self)
+            #     self.button.setCheckable(True)
+            #     self.layout.addWidget(self.button)
+        else:
+            self.button_states[key] = not self.button_states[key]
+
+
+    def pose_keypoint_buttons(self):
+        central_widget = QWidget(self)
+        self.setCentralWidget(central_widget)
+
+        # Create a vertical layout for the central widget
+        self.layout = QVBoxLayout(central_widget)
+        pose_button_names = button_names = [ "Return", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"
+        ]
+        for i, name in enumerate(button_names):
+
+                
+            self.button = QPushButton(name, self)
+            self.button.setCheckable(True)
+            button_state_key = list(self.button_states.keys())[i]  # Get the corresponding key
+            self.button.clicked.connect(lambda state, key=button_state_key: self.on_button_clicked(key))
+            self.layout.addWidget(self.button)
+           
+
+
+    def moveEvent(self, event):
+        # Capture PyQt window movement event
+        super().moveEvent(event)
+
+        # Calculate new position for OpenCV window
+        opencv_x = self.pos().x() + 200  # Adjust as needed
+        opencv_y = self.pos().y() + 0  # Adjust as needed
+        AnnotationTool.move_to(self.window_name, opencv_x, opencv_y)
+
+    def move_to_coordinates(self, x_coord, y_coord):
+        self.move(x_coord, y_coord)
 if __name__ == "__main__":
+
+
+     # Initialize PyQt application and window
+    app = QApplication(sys.argv) #
+ 
+    # Start PyQt event loop
+
+
     screen = screeninfo.get_monitors()[0]  # primary monitor
     width, height = screen.width, screen.height
     screen_center_x = int((width - 700) / 2)
     screen_center_y = int((height - 500)/ 2)
     tool = AnnotationTool()
+
+    
     tool.run_tool()
+
+  
