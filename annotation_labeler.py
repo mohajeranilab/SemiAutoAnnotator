@@ -17,12 +17,15 @@ import warnings
 from tqdm import tqdm
 
 from clustering import *
+from VideoManager import *
+from AnnotationManager import *
+from ModelManager import * 
+from PyQtWindow import *
 
 
-import cv2
 from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QComboBox, QPushButton, QWidget, QVBoxLayout
 from PyQt5.QtCore import Qt
-import sys
+
 
 class CV2Image():
     def __init__(self, path, name):
@@ -52,144 +55,6 @@ class CV2Image():
         """
         self.image = cv2.imread(self.path)
         
-class VideoManager():
-
-    def __init__(self, frame_skip, annotation_colors, annotation_files):
-        self.video_dir = None
-        self.frame_skip = frame_skip
-        self.cv2_img = None
-        self.annotation_colors = annotation_colors 
-        self.model_path = None
-        self.annotation_files = annotation_files 
-
-    def extract_frames(self):
-        root = Tk()
-        root.attributes("-topmost", True)
-        root.withdraw()
-
-        video_path = filedialog.askopenfilename(
-            initialdir="/", 
-            title="SELECT VIDEO FILE",
-            filetypes=(("Video files", "*.mp4;*.avi;*.mov;*.mkv"), ("All files", "*.*"))
-        )
-
-        if not video_path:
-            print("No video file selected.")
-            sys.exit()
-        
-        video_name, _ = os.path.splitext(os.path.basename(video_path))
-        self.video_dir = os.path.join("used_videos", video_name)
-        
-        os.makedirs(self.video_dir, exist_ok=True)
-
-      
-        shutil.copy(video_path, "used_videos/" + video_name.split(".")[0])
-    
- 
-        if not os.path.exists(self.video_dir + "/extracted_frames/"):
-            os.makedirs(self.video_dir + "/extracted_frames/")
-
-        cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            print("Error: Could not open video.")
-            sys.exit()
-            
-        frame_count = 0
-        extracted_count = 0
-
-        base_name = os.path.splitext(os.path.basename(video_path))[0]
-        while True:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_count)
-            frame_filename = os.path.join(self.video_dir + "/extracted_frames/", f"{base_name}_img_{frame_count:05d}.jpg")
-
-            if not os.path.exists(frame_filename):
-                ret, frame = cap.read()
-                
-                if not ret:
-                    break
-            
-            # Skipping by FRAME_SKIP to shorten how many frames are needed to annotate
-                if frame_count % self.frame_skip == 0:
-                    
-                
-                    cv2.imwrite(frame_filename, frame) 
-                    extracted_count += 1
-            
-                
-            frame_count += self.frame_skip 
-
-        cap.release()
-        print(f"Extracted {extracted_count} new frames to 'extracted_frames'")
-
-
-        #self.model_path = filedialog.askopenfilename(initialdir="/", title="SELECT MODEL/WEIGHTS FILE")
-
-        root.destroy()
-      
-        return video_name
-    
-    def make_video(self):
-
-        video_path = filedialog.askdirectory(
-            initialdir="/", 
-            title="SELECT VIDEO FOLDER IN used_videos/",
-            
-        )
-
-        print("Combining annotated frames to video ......")
-
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        video = cv2.VideoWriter("output_video.avi", fourcc, 30.0, (self.cv2_img.width, self.cv2_img.height))
-        frames_to_write = {}
-
-        # First, gather all frames to write
-        for annotation_file in self.annotation_files:
-        
-            with open(video_path + "\\" + annotation_file, 'r') as f:
-                data = json.load(f)
-            if len(data["annotations"]) != 0:
-                for image_data in data["images"]:
-                    frames_to_write[image_data["id"]] = image_data["file_name"]
-            else:
-                continue
-        if not frames_to_write:
-            print("No annotations have been made for the selected video")
-
-
-        all_annotations = {}
-
-        for annotation_file in self.annotation_files:
-            with open(video_path + "\\" + annotation_file, 'r') as f:
-                data = json.load(f)
-            
-            for annotation in data["annotations"]:
-                image_id = annotation["image_id"]
-                if image_id not in all_annotations:
-                    all_annotations[image_id] = []
-                all_annotations[image_id].append((annotation_file, annotation))
-
-        # Draw all annotations on each frame
-        for image_id, image_file in frames_to_write.items():
-            if image_id in all_annotations:
-                self.cv2_img.set_image()
-                
-                for annotation_file, annotation in all_annotations[image_id]:
-                    if annotation_file == "bbox_annotations.json":
-                        cv2.rectangle(self.cv2_img.get_image(), (annotation["bbox"][0], annotation["bbox"][1]), 
-                                            (annotation["bbox"][2], annotation["bbox"][3]), 
-                                            self.annotation_colors[annotation["object_id"]], 2)
-
-                    elif annotation_file == "pose_annotations.json":
-                        for keypoint_annotation in annotation["keypoints"]:
-                            if len(keypoint_annotation) != 0:
-                                cv2.circle(self.cv2_img.get_image(), (keypoint_annotation[1][0], keypoint_annotation[1][1]), 
-                                                5, self.annotation_colors[annotation["object_id"]], -1)
-
-                video.write(self.cv2_img.get_image())
-
-        video.release()
-
-        print("Video has been created called output_video")
 
 class AnnotationTool():
     def __init__(self):
@@ -213,7 +78,7 @@ class AnnotationTool():
         self.model_manager = None
 
         self.image_dir = None
-        self.model_detecting = "On"
+
         self.annotation_colors = []
         self.img_id = None
         self.corner_size = 10
@@ -1099,7 +964,8 @@ class AnnotationTool():
                     
                     self.video_manager.make_video()
 
-                elif key == ord('m') or self.pyqtwindow.button_states["toggle_model"]: # "M": Turns model detection on or off, as shown on the image
+                elif (key == ord('m') or self.pyqtwindow.button_states["toggle_model"]) and self.model_manager.model_path != None: # "M": Turns model detection on or off, as shown on the image
+                    print
                     if self.pyqtwindow.button_states["toggle_model"]:
                         self.pyqtwindow.button_states["toggle_model"] = False
                         #self.pyqtwindow.toggle_model_button.setChecked(False)  # Uncheck the button visually
@@ -1455,6 +1321,7 @@ class AnnotationTool():
             self.model_manager.model = YOLO(self.model_manager.model_path)
             #self.model.to(device)
             self.model_manager.model.to(device)
+            self.model_detecting = "On"
 
             # comment this to turn off clustering 
             # initialize_clustering(Path(self.image_dir), self.model_manager.model_path)
@@ -1465,11 +1332,11 @@ class AnnotationTool():
             # shutil.rmtree(self.image_dir, ignore_errors=True)
         else:
             dir_list = None
-            
+            self.model_detecting = "Off"
         self.already_passed = False
         self.object_id = 1
         self.annotations_exists = False
-        self.model_detecting = "On"
+        
 
         for annotation_file in self.annotation_files:
             with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
@@ -1547,422 +1414,159 @@ class AnnotationTool():
          
         cv2.destroyAllWindows()
         sys.exit(app.exec_()) # 
-class ModelManager:
-    def __init__(self):
-        
-        self.conf_threshold = 0.25 
-
-    def retrain(self):
-        """
-        Will retrain on the annotated images of chosen video files
-
-        """
-        cv2.destroyAllWindows()
-        base_path = Path("labeler_dataset")
-
-        # Create a directory tree in the YOLO format to store the images and labels
-        if base_path.exists():
-            shutil.rmtree(base_path)
-        img_train_path = base_path / "images/train"
-        img_val_path = base_path / "images/val"
-        label_train_path = base_path / "labels/train"
-        label_val_path = base_path / "labels/val"
-
-        img_train_path.mkdir(parents=True, exist_ok=True)
-        img_val_path.mkdir(parents=True, exist_ok=True)
-        label_train_path.mkdir(parents=True, exist_ok=True)
-        label_val_path.mkdir(parents=True, exist_ok=True)
 
 
-        root = Tk()
-        root.attributes('-topmost', True)
-        root.withdraw()
 
-        # Select all the video files to train, it will look inside the video folders (if they exist) and retrieve the images and their annotations
-        video_paths = []
-        print("""\nSelect video files you want to use to train. These video files must have been annotated previously and annotations saved in their directory.\n
-    Press Cancel or exit out of the file explorer when finished choosing videos.
-        """)
-        while True:
-            video_path = filedialog.askdirectory(
-                initialdir="used_videos/",
-                title="SELECT VIDEO FOLDERS TO TRAIN"
-            )
-
-            if video_path == "":
-                break
-    
-            if video_path not in video_paths:
-                video_paths.append(video_path)
-
-        root.destroy()
-        if "" in video_paths:
-            video_paths.remove("")
-        assert len(video_paths) > 0, "There are no video files selected"
-    
-
-
-        for video_path in video_paths:
-            assert os.path.exists(os.path.join(video_path, "extracted_frames")), \
-                f"No extracted frames for the video folder you have chosen"
-            
-            if not os.path.exists(os.path.join(video_path, "bbox_annotations.json")):
-                warnings.warn(f"There are no bbox annotations made for {video_path}")
-
-            if not os.path.exists(os.path.join(video_path, "pose_annotations.json")):
-                warnings.warn(f"There are no pose annotations made for {video_path}")
-            # assert os.path.exists(os.path.join(video_path, "bbox_annotations.json")), \
-            #     f"There are no annotations made for {video_path}"
-            
-            with open(video_path + "/bbox_annotations.json", 'r') as f:
-                data = json.load(f)
-
-            for image_data in data["images"]:
-                shutil.copy(image_data["file_name"], img_train_path)
-
-            for annotation in data["annotations"]:
-                image_id = annotation["image_id"]
-                for image_data in data["images"]:
-                    if image_data["id"] == image_id:
-                        file_path = image_data["file_name"]
-                        filename = Path(file_path).stem
-                        with open(str(label_train_path / filename) + ".txt", 'a') as f:
-                            width = (annotation["bbox"][2] - annotation["bbox"][0])/self.img_width
-
-                            height = (annotation["bbox"][3] - annotation["bbox"][1])/self.img_height
-                            x_center = (annotation["bbox"][0]/self.img_width) + width/2
-                            y_center = (annotation["bbox"][1]/self.img_height) + height/2
-
-                            f.write(f"0 {x_center} {y_center} {width} {height} \n")
-                
-            
-
-        # Transferring 10% of the train data to val data
-        train_images = list(img_train_path.glob("*.jpg"))
-        val_count = int(len(train_images) * 0.1)
-        val_images = random.sample(train_images, val_count)
-
-        for img in val_images:
-            shutil.move(img, img_val_path / img.name)
-            label_file = label_train_path / (img.stem + ".txt")
-
-            if label_file.exists():
-                shutil.move(label_file, label_val_path / label_file.name)
 
     
-        
-        all_entries = img_train_path.iterdir()
-        files = [entry for entry in all_entries if entry.is_file()]
-        num_of_files = len(files)
+# class PyQtWindow(QMainWindow):
+#     def __init__(self):
+#         super().__init__()
+#         self.window_name = None
+
+
+#         self.button_states = {
+#             "bbox": False,
+#             "pose": False,
+#             "editing": False,
+#             "delete": False,
+#             "undo": False,
+#             "toggle_model": False,
+#             "increment_id": False,
+#             "decrement_id": False,
+#             "next_img": False,
+#             "previous_img": False,
+#             "retrain": False,
+#             "make_video": False,
+#             "head": False,
+#             "tail": False,
+#             "neck": False,
+#             "r hand": False,
+#             "l hand": False,
+#             "r leg": False,
+#             "l leg": False
+#         }
 
         
-        self.model.train(data="annotation_labeler.yaml", epochs = 100, patience=15, degrees=30, shear = 30)
-        print("Model has finished training, use the new model weights and run the program again.")
-        sys.exit()
-   
-    def predicting(self):
-        
-        bbox_values = self.model.predict(self.img_path, conf=self.conf_threshold)[0].boxes
-        num_of_objects = len(bbox_values.conf)
-        conf_list = []
-        for i in range(num_of_objects):
-            conf = bbox_values.conf[i].item()
-            conf_list.append(conf)
-            pred_x1, pred_y1, pred_x2, pred_y2 = map(int, bbox_values.xyxy[i].tolist())
 
-            self.annotation_manager.id = AnnotationTool.get_id(self.annotation_files, self.video_manager, "annotations")
-            
-            info = {
-                "images": {
-                    "id": self.img_id,
-                    "file_name": self.img_path,
-                    "image_height": self.img_height,
-                    "image_width": self.img_width
-                },
-                "annotation": {
-                    "id": self.annotation_manager.id,
-                    "bbox": [pred_x1, pred_y1, pred_x2, pred_y2],
-                    "image_id":self.img_id,
-                    "object_id":0,
-                    "iscrowd": 0,
-                    "area": (pred_y2 - pred_y1) * (pred_x2 - pred_x1),
-                    "type": "detected bounding_box",
-                    "is_hidden": None, # model won't be able to detect if an image is "hidden"
-                    "conf": conf,
-                    "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                }
-            }
-            self.annotation_manager.save_to_json(info, "bbox")
-            self.annotation_manager.id += 1
-
-        conf_list.sort()
-        two_highest_mean_conf = conf_list[len(conf_list)-2:]
-        # print(sum(two_highest_mean_conf)/2)
-        # if (pred_y2 - pred_y1) * (pred_x2 - pred_x1) > 5625:
-
-        #     print("bbox too small, less than 5625 area")
-        #     shutil.copy(self.image_path, self.video_manager.video_dir[])
-        # elif num_of_objects > 5:
-        #     print("no more than 5 mouses should be in a cage ")
-        #     shutil.copy(self.image_path, self.video_manager.video_dir[])
-
-        # elif (sum(two_highest_mean_conf)/2) < 0.5:
-        #     print("Confidences are too low")
-        #     shutil.copy(self.image_path, self.video_manager.video_dir[])
-            
-        # else:
-        #     shutil.copy(self.image_path, self.video_manager.video_dir[])
-
-
-
-class AnnotationManager():
-
-    def __init__(self, video_dir, annotation_files):
-        self.video_dir = video_dir
-        self.annotation_files = annotation_files 
-        self.id = None
-
-    def cleaning(self): 
-        annotated_image_ids = None
-        for annotation_file in self.annotation_files:
-            with open(self.video_dir + "\\" + annotation_file, 'r') as f:
-                data = json.load(f)
-
-            if len(data["images"]) == 0:
-                continue
-
-            annotated_image_ids = {annotation["image_id"] for annotation in data["annotations"]}
-            
-            
-            data["images"] = [image_data for image_data in data["images"] if image_data["id"] in annotated_image_ids]
-            if annotation_file == "pose_annotations.json":
-                data["annotations"] = [annotation_data for annotation_data in data["annotations"] if annotation_data["keypoints"]]
-            
-            with open(self.video_dir + "\\" + annotation_file, 'w') as f:
-                json.dump(data, f, indent=4)
+#         # add the additonal if conditions to the key presses #######################################
+#         self.setWindowTitle("PyQt Window")
+#         self.setGeometry(400, 100, 200, 480)  # Set geometry (x, y, width, height)
+#         self.original_buttons()
        
-        return annotated_image_ids
-
-    def save_to_json(self, annotations, type):
-    
-        """
-        Saves annotations made by the user, bbox or pose, to their respective json file
-
-        annotations (dict): Created annotation to be saved into the respective json file
-        type (str): The type of annotation, "bbox" or "pose"
-
-        """ 
-
-        file_index = {
-            "bbox": 0,
-            "pose": 1
-        }.get(type, None)
-
-            
-        with open(self.video_dir +"\\" + self.annotation_files[file_index], 'r') as f:
-            data = json.load(f)
-
-        image_id = annotations["images"]["id"]
-        if any(image["id"] == image_id for image in data["images"]):
-            pass
-        else:
-            data["images"].append(annotations["images"])
-
-        data["annotations"].append(annotations["annotation"])
-        with open(self.video_dir + "\\" + self.annotation_files[file_index], 'w') as f:
-            json.dump(data, f, indent=4)
-    
-class PyQtWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.window_name = None
 
 
-        self.button_states = {
-            "bbox": False,
-            "pose": False,
-            "editing": False,
-            "delete": False,
-            "undo": False,
-            "toggle_model": False,
-            "increment_id": False,
-            "decrement_id": False,
-            "next_img": False,
-            "previous_img": False,
-            "retrain": False,
-            "make_video": False,
-            "head": False,
-            "tail": False,
-            "neck": False,
-            "r hand": False,
-            "l hand": False,
-            "r leg": False,
-            "l leg": False
-        }
+#     def original_buttons(self):
 
-        
+#         central_widget = QWidget(self)
+#         self.setCentralWidget(central_widget)
 
-        # add the additonal if conditions to the key presses #######################################
-        self.setWindowTitle("PyQt Window")
-        self.setGeometry(400, 100, 200, 480)  # Set geometry (x, y, width, height)
-        self.original_buttons()
-        # # Create buttons
-        # # Create a central widget to hold everything
-        # central_widget = QWidget(self)
-        # self.setCentralWidget(central_widget)
-
-        # # Create a vertical layout for the central widget
-        # self.layout = QVBoxLayout(central_widget)
-        # button_names = [
-        #     "Bounding Box", "Pose", "Editing", "Delete", "Undo", "Toggle Model",
-        #     "Increment ID", "Decrement ID", "Next Image", "Previous Image",
-        #     "Retrain", "Make Video"
-        # ]
+#         # Create a vertical layout for the central widget
+#         self.layout = QVBoxLayout(central_widget)
+#         button_names = [
+#             "Bounding Box", "Pose", "Editing", "Delete", "Undo", "Toggle Model",
+#             "Increment ID", "Decrement ID", "Next Image", "Previous Image",
+#             "Retrain", "Make Video", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"
+#         ]
 
  
 
-        # self.bbox_button = QPushButton("Bounding Box", self)
-        # self.bbox_button.setCheckable(True)
-        # self.bbox_button.clicked.connect(lambda: self.on_button_clicked("bbox"))
-        # self.layout.addWidget(self.bbox_button)
+#         self.bbox_button = QPushButton("Bounding Box", self)
+#         self.bbox_button.setCheckable(True)
+#         self.bbox_button.clicked.connect(lambda: self.on_button_clicked("bbox"))
+#         self.layout.addWidget(self.bbox_button)
 
-        # self.pose_button = QPushButton("Pose", self)
-        # self.pose_button.setCheckable(True)
-        # self.pose_button.clicked.connect(lambda: self.on_button_clicked("pose"))
-        # self.layout.addWidget(self.pose_button)
+#         self.pose_button = QPushButton("Pose", self)
+#         self.pose_button.setCheckable(True)
+#         self.pose_button.clicked.connect(lambda: self.on_button_clicked("pose"))
+#         self.layout.addWidget(self.pose_button)
 
-        # self.editing_button = QPushButton("Editing", self)
-        # self.editing_button.setCheckable(True)
-        # self.editing_button.clicked.connect(lambda: self.on_button_clicked("editing"))
-        # self.layout.addWidget(self.editing_button)
+#         self.editing_button = QPushButton("Editing", self)
+#         self.editing_button.setCheckable(True)
+#         self.editing_button.clicked.connect(lambda: self.on_button_clicked("editing"))
+#         self.layout.addWidget(self.editing_button)
 
-        # self.toggle_model_button = QPushButton("Toggle Model", self)
-        # self.toggle_model_button.setCheckable(True)
-        # self.toggle_model_button.clicked.connect(lambda: self.on_button_clicked("toggle_model"))
-        # self.layout.addWidget(self.toggle_model_button)
+#         self.toggle_model_button = QPushButton("Toggle Model", self)
+#         self.toggle_model_button.setCheckable(True)
+#         self.toggle_model_button.clicked.connect(lambda: self.on_button_clicked("toggle_model"))
+#         self.layout.addWidget(self.toggle_model_button)
 
 
-        # for i, name in enumerate(button_names):
-        #     if name not in ["Bounding Box", "Pose", "Editing", "Toggle Model"]:
+#         for i, name in enumerate(button_names):
+#             if name not in ["Bounding Box", "Pose", "Editing", "Toggle Model", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"]:
                 
-        #         self.button = QPushButton(name, self)
-        #         self.button.setCheckable(False)
-        #         button_state_key = list(self.button_states.keys())[i]  # Get the corresponding key
-        #         self.button.clicked.connect(lambda state, key=button_state_key: self.on_button_clicked(key))
-        #         self.layout.addWidget(self.button)
+#                 self.button = QPushButton(name, self)
+#                 self.button.setCheckable(False)
+#                 button_state_key = list(self.button_states.keys())[i]  # Get the corresponding key
+#                 self.button.clicked.connect(lambda state, key=button_state_key: self.on_button_clicked(key))
+#                 self.layout.addWidget(self.button)
            
 
-        # self.setCentralWidget(central_widget)
+#         self.setCentralWidget(central_widget)
 
 
-    def original_buttons(self):
-
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
-
-        # Create a vertical layout for the central widget
-        self.layout = QVBoxLayout(central_widget)
-        button_names = [
-            "Bounding Box", "Pose", "Editing", "Delete", "Undo", "Toggle Model",
-            "Increment ID", "Decrement ID", "Next Image", "Previous Image",
-            "Retrain", "Make Video", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"
-        ]
-
- 
-
-        self.bbox_button = QPushButton("Bounding Box", self)
-        self.bbox_button.setCheckable(True)
-        self.bbox_button.clicked.connect(lambda: self.on_button_clicked("bbox"))
-        self.layout.addWidget(self.bbox_button)
-
-        self.pose_button = QPushButton("Pose", self)
-        self.pose_button.setCheckable(True)
-        self.pose_button.clicked.connect(lambda: self.on_button_clicked("pose"))
-        self.layout.addWidget(self.pose_button)
-
-        self.editing_button = QPushButton("Editing", self)
-        self.editing_button.setCheckable(True)
-        self.editing_button.clicked.connect(lambda: self.on_button_clicked("editing"))
-        self.layout.addWidget(self.editing_button)
-
-        self.toggle_model_button = QPushButton("Toggle Model", self)
-        self.toggle_model_button.setCheckable(True)
-        self.toggle_model_button.clicked.connect(lambda: self.on_button_clicked("toggle_model"))
-        self.layout.addWidget(self.toggle_model_button)
-
-
-        for i, name in enumerate(button_names):
-            if name not in ["Bounding Box", "Pose", "Editing", "Toggle Model", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"]:
-                
-                self.button = QPushButton(name, self)
-                self.button.setCheckable(False)
-                button_state_key = list(self.button_states.keys())[i]  # Get the corresponding key
-                self.button.clicked.connect(lambda state, key=button_state_key: self.on_button_clicked(key))
-                self.layout.addWidget(self.button)
-           
-
-        self.setCentralWidget(central_widget)
-
-
-    def on_button_clicked(self, key):
+#     def on_button_clicked(self, key):
         
         
 
-        if key == "pose" and self.button_states[key]:
-            self.button_states[key] = not self.button_states[key]
+#         if key == "pose" and self.button_states[key]:
+#             self.button_states[key] = not self.button_states[key]
     
-            self.original_buttons()
+#             self.original_buttons()
             
 
-        elif key == "pose" and not self.button_states[key]:
-            self.button_states[key] = not self.button_states[key]
+#         elif key == "pose" and not self.button_states[key]:
+#             self.button_states[key] = not self.button_states[key]
            
-            self.pose_keypoint_buttons()
-            # # Clear layout to remove existing buttons
-            # for i in reversed(range(self.layout.count())):
-            #     layout_item = self.layout.itemAt(i)
-            #     if layout_item.widget() and layout_item.widget() != self.pose_button:
-            #         layout_item.widget().setParent(None)
-            # # Add additional buttons below the Pose button
-            # additional_buttons = ["Button A", "Button B", "Button C"]  # Example additional buttons
-            # for name in additional_buttons:
-            #     self.button = QPushButton(name, self)
-            #     self.button.setCheckable(True)
-            #     self.layout.addWidget(self.button)
-        else:
-            self.button_states[key] = not self.button_states[key]
+#             self.pose_keypoint_buttons()
+#             # # Clear layout to remove existing buttons
+#             # for i in reversed(range(self.layout.count())):
+#             #     layout_item = self.layout.itemAt(i)
+#             #     if layout_item.widget() and layout_item.widget() != self.pose_button:
+#             #         layout_item.widget().setParent(None)
+#             # # Add additional buttons below the Pose button
+#             # additional_buttons = ["Button A", "Button B", "Button C"]  # Example additional buttons
+#             # for name in additional_buttons:
+#             #     self.button = QPushButton(name, self)
+#             #     self.button.setCheckable(True)
+#             #     self.layout.addWidget(self.button)
+#         else:
+#             self.button_states[key] = not self.button_states[key]
 
 
-    def pose_keypoint_buttons(self):
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
+#     def pose_keypoint_buttons(self):
+#         central_widget = QWidget(self)
+#         self.setCentralWidget(central_widget)
 
-        # Create a vertical layout for the central widget
-        self.layout = QVBoxLayout(central_widget)
-        pose_button_names = button_names = [ "Return", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"
-        ]
-        for i, name in enumerate(button_names):
+#         # Create a vertical layout for the central widget
+#         self.layout = QVBoxLayout(central_widget)
+#         pose_button_names = button_names = [ "Return", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"
+#         ]
+#         for i, name in enumerate(button_names):
 
                 
-            self.button = QPushButton(name, self)
-            self.button.setCheckable(True)
-            button_state_key = list(self.button_states.keys())[i]  # Get the corresponding key
-            self.button.clicked.connect(lambda state, key=button_state_key: self.on_button_clicked(key))
-            self.layout.addWidget(self.button)
+#             self.button = QPushButton(name, self)
+#             self.button.setCheckable(True)
+#             button_state_key = list(self.button_states.keys())[i]  # Get the corresponding key
+#             self.button.clicked.connect(lambda state, key=button_state_key: self.on_button_clicked(key))
+#             self.layout.addWidget(self.button)
            
 
 
-    def moveEvent(self, event):
-        # Capture PyQt window movement event
-        super().moveEvent(event)
+#     def moveEvent(self, event):
+#         # Capture PyQt window movement event
+#         super().moveEvent(event)
 
-        # Calculate new position for OpenCV window
-        opencv_x = self.pos().x() + 200  # Adjust as needed
-        opencv_y = self.pos().y() + 0  # Adjust as needed
-        AnnotationTool.move_to(self.window_name, opencv_x, opencv_y)
+#         # Calculate new position for OpenCV window
+#         opencv_x = self.pos().x() + 200  # Adjust as needed
+#         opencv_y = self.pos().y() + 0  # Adjust as needed
+#         AnnotationTool.move_to(self.window_name, opencv_x, opencv_y)
 
-    def move_to_coordinates(self, x_coord, y_coord):
-        self.move(x_coord, y_coord)
+#     def move_to_coordinates(self, x_coord, y_coord):
+#         self.move(x_coord, y_coord)
+
+
+
 if __name__ == "__main__":
 
 
