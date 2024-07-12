@@ -14,7 +14,7 @@ import pywinctl as pwc
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
 
-from clustering import *
+
 from VideoManager import *
 from AnnotationManager import *
 from ModelManager import * 
@@ -1274,6 +1274,7 @@ class AnnotationTool():
         if not isinstance(self.model_manager.model_path, tuple) and self.model_manager.model_path != "" and self.model_manager.model_path != None:
             import torch
             from ultralytics import YOLO
+            from clustering import *
 
             print("CUDA available?: ", torch.cuda.is_available())
             device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
