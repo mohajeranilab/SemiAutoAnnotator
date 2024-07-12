@@ -1,29 +1,9 @@
 import cv2
 import os
-from pathlib import Path
-from tkinter import filedialog
 import shutil
 import json
-import random
-import torch
-from datetime import datetime
-from ultralytics import YOLO
-import argparse
 import sys
-import pygetwindow as gw
-import screeninfo
-from tkinter import Tk, filedialog, messagebox
-import warnings 
-from tqdm import tqdm
-
-
-
-import cv2
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QComboBox, QPushButton, QWidget, QVBoxLayout
-from PyQt5.QtCore import Qt
-import sys
-
-
+from tkinter import Tk, filedialog
 
 
 class VideoManager():

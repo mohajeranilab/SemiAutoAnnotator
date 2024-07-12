@@ -1,20 +1,18 @@
 import cv2
 import os
 from pathlib import Path
-from tkinter import filedialog
 import shutil
 import json
 import random
-import torch
 from datetime import datetime
-from ultralytics import YOLO
 import argparse
 import sys
-import pygetwindow as gw
 import screeninfo
 from tkinter import Tk, filedialog, messagebox
-import warnings 
 from tqdm import tqdm
+import pywinctl as pwc
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import Qt
 
 from clustering import *
 from VideoManager import *
@@ -23,8 +21,6 @@ from ModelManager import *
 from PyQtWindow import *
 
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QComboBox, QPushButton, QWidget, QVBoxLayout
-from PyQt5.QtCore import Qt
 
 
 class CV2Image():
@@ -58,10 +54,9 @@ class CV2Image():
 
 class AnnotationTool():
     def __init__(self):
-        self.image_dir_path = None
+    
         self.annotation_files = ["bbox_annotations.json", "pose_annotations.json"]
-        self.frame_skip = 50
-        self.cv2_img = None
+       
         self.img_num = 0
         self.textSizeHeight = None
         self.object_id = 1
@@ -71,7 +66,6 @@ class AnnotationTool():
         self.annotations_exists = None
         self.text_to_write = None
 
-        self.annotation_info = None
 
         self.annotation_manager = None
         self.video_manager = None
@@ -82,14 +76,14 @@ class AnnotationTool():
         self.annotation_colors = []
         self.img_id = None
         self.corner_size = 10
-        self.model = None
+
         self.font_scale = 0.5
-        self.font_thickness = 0.5
+        self.font_thickness = 1
         self.font_color = (255, 255, 0)
         self.window_info = {"img_name": None, "coordinates": None, "dimensions": None}
-        self.screen_center_x = None
+   
         self.editing_mode = False
-        self.screen_center_y = None
+
         self.bbox_mode = False
         self.pose_mode = False
         self.bbox_type = None
@@ -120,34 +114,30 @@ class AnnotationTool():
         
         if not any(value is None for value in self.window_info.values()):
             
-            if gw.getWindowsWithTitle(self.cv2_img.name):
-                
-                window = gw.getWindowsWithTitle(self.cv2_img.name)[0]  # Get the first window with the given title
+           
+            if pwc.getWindowsWithTitle(self.cv2_img.name):
+                window = pwc.getWindowsWithTitle(self.cv2_img.name)[0]
                 x, y = window.left, window.top
                 
                 window_width, window_height = window.width, window.height
                 window_width -= 16
                 window_height -= 39
-    
                 self.window_info = {}
                 self.window_info["img_name"] = self.cv2_img.name
                 self.window_info["coordinates"] = (x, y)
                 self.window_info["dimensions"] = (window_width, window_height)
-
             else:
-                
-                x, y = self.window_info['coordinates']
-                window_width, window_height = self.window_info['dimensions']
+                x, y = self.window_info["coordinates"]
+                window_width, window_height = self.window_info["dimensions"]
         else:
-            if gw.getWindowsWithTitle(self.cv2_img.name):
-            
-                window = gw.getWindowsWithTitle(self.cv2_img.name)[0]  # Get the first window with the given title
+            if pwc.getWindowsWithTitle(self.cv2_img.name):
+                window = pwc.getWindowsWithTitle(self.cv2_img.name)[0]
                 x, y = window.left, window.top
-            
+
                 window_width, window_height = window.width, window.height
         
             else:
-                x, y = screen_center_x, screen_center_y
+                x, y = self.screen_center_x, self.screen_center_y
     
                 window_width, window_height = self.cv2_img.width, self.cv2_img.height
 
@@ -176,7 +166,7 @@ class AnnotationTool():
         
         cv2.imshow(self.cv2_img.name, self.cv2_img.get_image())
         cv2.setWindowProperty(self.cv2_img.name, cv2.WND_PROP_TOPMOST, 1)
-        self.pyqtwindow.show()
+    
         
     @staticmethod
     def move_to(window_name, x, y):
@@ -252,11 +242,12 @@ class AnnotationTool():
     def editing(self, event, x, y, flags, param):
         global move_top_left, move_top_right, move_bottom_right, move_bottom_left, move_pose_point, file_to_dump
 
-             
         if event == cv2.EVENT_LBUTTONDOWN:
             breakout = False
             if self.click_count == 0:
                 for annotation_file in self.annotation_files:
+                    if breakout:
+                        break
                     with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
                         data = json.load(f)
 
@@ -265,8 +256,6 @@ class AnnotationTool():
                             img_id = image_data["id"]
                     
                     for annotation_data in data["annotations"]:
-                        if breakout:
-                            break
 
                         if annotation_data["image_id"] == img_id:
                             if annotation_data["type"] == "pose":
@@ -307,7 +296,8 @@ class AnnotationTool():
                                     move_bottom_left = False
                                     move_bottom_right = False
                                     move_pose_point = False
-                                 
+                    
+                                    breakout = True
                                     break
                                 
                                 elif top_right_coord[0] - self.corner_size < x < top_right_coord[0] + self.corner_size and top_right_coord[1] - self.corner_size < y < top_right_coord[1] + self.corner_size:
@@ -317,7 +307,7 @@ class AnnotationTool():
                                     move_bottom_left = False
                                     move_bottom_right = False
                                     move_pose_point = False
-
+                                    breakout = True
                                     break
 
                                 elif bottom_left_coord[0] - self.corner_size < x < bottom_left_coord[0] + self.corner_size and bottom_left_coord[1] - self.corner_size < y < bottom_left_coord[1] + self.corner_size:
@@ -328,7 +318,7 @@ class AnnotationTool():
                                     move_bottom_left = True
                                     move_bottom_right = False
                                     move_pose_point = False
-                       
+                                    breakout = True
                                     break
 
                                 elif bottom_right_coord[0] - self.corner_size < x < bottom_right_coord[0] + self.corner_size and bottom_right_coord[1] - self.corner_size < y < bottom_right_coord[1] + self.corner_size:
@@ -338,7 +328,7 @@ class AnnotationTool():
                                     move_bottom_left = False
                                     move_bottom_right = True
                                     move_pose_point = False
-                              
+                                    breakout = True
                                     break
                                 else:
                                     move_top_left = False
@@ -545,8 +535,9 @@ class AnnotationTool():
                 self.annotation_manager.save_to_json(info, "bbox")
                 
 
-
+        
         elif self.click_count == 1:
+        
 
         
             if move_top_left or move_top_right or move_bottom_left or move_bottom_right or move_pose_point: 
@@ -613,7 +604,7 @@ class AnnotationTool():
                     
                     temp_x = self.temp_bbox_coords[2] if self.temp_bbox_coords[2] > x else x 
                     temp_y = self.temp_bbox_coords[3] if self.temp_bbox_coords[3] > y else y 
-                    
+               
                     cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
 
                 elif move_top_right:
@@ -678,40 +669,14 @@ class AnnotationTool():
 
     def drawing_bbox(self, event, x, y, flags, param):
         global start_x, start_y, end_x, end_y
-        self.annotation_manager.id = self.get_id(self.annotation_files, self.video_manager, "annotations")
-        self.img_id = None
-        for annotation_file in self.annotation_files:
-            with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
-                data = json.load(f)
-
-              
-                break_loop = False
-                for image_data in data["images"]:
-                    if image_data["file_name"] == self.cv2_img.path:
-               
-                        self.img_id = image_data["id"]
-                        break_loop = True
-                        break
-                if break_loop:
-                    break
-        if self.img_id == None:
-            self.img_id = self.get_id(self.annotation_files, self.video_manager, "images")
+        
     
 
         if self.click_count == 1:
             self.cv2_img.set_image()
             self.drawing_annotations()
-            x1, y1 = start_x, start_y # Top-left corner of the main rectangle
-            x2, y2 = x, y   # Bottom-right corner of the main rectangle
-
-
-
-            corner_points = [(x1, y1), (x2, y1), (x1, y2), (x2, y2)]
-
-            # Draw rectangles for each corner
-            for corner_x, corner_y in corner_points:
-                cv2.rectangle(self.cv2_img.get_image(), (corner_x - self.corner_size//2 , corner_y - self.corner_size//2), (corner_x + self.corner_size//2, corner_y + self.corner_size//2), self.annotation_colors[self.object_id], 2)
-                # cv2.rectangle(self.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.object_id], 2)
+        
+                
             cv2.rectangle(self.cv2_img.get_image(), (start_x, start_y), (x, y), self.annotation_colors[self.object_id], 2)
 
             if self.is_hidden == 1:
@@ -722,10 +687,7 @@ class AnnotationTool():
             elif self.bbox_type == "normal":
                 self.text_to_write = f"Bounding Box Mode - {self.object_id}"
             
-            temp_x = start_x if start_x > x else x 
-            temp_y = start_y if start_y > y else y 
-            
-            cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+            cv2.putText(self.cv2_img.get_image(), str(self.object_id), (max(start_x, x) - 20, max(start_y, y) - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
             self.show_image()
             
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -736,7 +698,24 @@ class AnnotationTool():
                 self.click_count += 1
 
         elif event == cv2.EVENT_LBUTTONUP:
-        
+            self.annotation_manager.id = self.get_id(self.annotation_files, self.video_manager, "annotations")
+            self.img_id = None
+            for annotation_file in self.annotation_files:
+                with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+                    data = json.load(f)
+
+                
+                    break_loop = False
+                    for image_data in data["images"]:
+                        if image_data["file_name"] == self.cv2_img.path:
+                
+                            self.img_id = image_data["id"]
+                            break_loop = True
+                            break
+                    if break_loop:
+                        break
+            if self.img_id == None:
+                self.img_id = self.get_id(self.annotation_files, self.video_manager, "images")
             end_x, end_y = x, y
             self.click_count = 0
                   
@@ -769,18 +748,13 @@ class AnnotationTool():
                     
                 }
             }
-            x1, y1 = start_x, start_y  # Top-left corner of the main rectangle
-            x2, y2 = end_x, end_y # Bottom-right corner of the main rectangle
 
-            # Calculate corner rectangles
-            # Size of the smaller rectangles
+            corner_points = [(start_x, start_y), (end_x, start_y), (start_x, end_y), (end_x, end_y)]
 
-            corner_points = [(x1, y1), (x2, y1), (x1, y2), (x2, y2)]
-
-            # Draw rectangles for each corner
+        
             for corner_x, corner_y in corner_points:
                 cv2.rectangle(self.cv2_img.get_image(), (corner_x - self.corner_size//2 , corner_y - self.corner_size//2), (corner_x + self.corner_size//2, corner_y + self.corner_size//2), self.annotation_colors[self.object_id], 2)
-                #cv2.rectangle(self.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.object_id], 2)
+                
             
             cv2.rectangle(self.cv2_img.get_image(), (start_x, start_y), (end_x, end_y), self.annotation_colors[self.object_id], 2)
             
@@ -917,9 +891,7 @@ class AnnotationTool():
             self.pyqtwindow.window_name = self.cv2_img.name
             while True:
                 key = cv2.waitKey(1)
-                if self.pyqtwindow.button_states["bbox"]:
-                    key = ord('b')
-        
+             
     
                 if key == 27 or cv2.getWindowProperty(self.cv2_img.name, cv2.WND_PROP_VISIBLE) < 1: # "Escape": Exits the program 
                     self.annotation_manager.cleaning()
@@ -930,7 +902,7 @@ class AnnotationTool():
                 elif key == ord('e') or self.pyqtwindow.button_states["editing"]:
                     if self.pyqtwindow.button_states["editing"]:
                         self.pyqtwindow.button_states["editing"] = False
-                        #self.pyqtwindow.editing_button.setChecked(False)  # Uncheck the button visually
+                        
                         
                     if self.editing_mode == False:
                         self.editing_mode = True
@@ -958,17 +930,17 @@ class AnnotationTool():
                 
 
 
-                elif key == ord('v') or self.pyqtwindow.button_states["make_video"]: # make video
-                    if self.pyqtwindow.button_states["make_video"]:
-                        self.pyqtwindow.button_states["make_video"] = False
+                elif key == ord('v') or self.pyqtwindow.button_states["make video"]: # make video
+                    if self.pyqtwindow.button_states["make video"]:
+                        self.pyqtwindow.button_states["make video"] = False
                     
                     self.video_manager.make_video()
 
-                elif (key == ord('m') or self.pyqtwindow.button_states["toggle_model"]) and self.model_manager.model_path != None: # "M": Turns model detection on or off, as shown on the image
-                    print
-                    if self.pyqtwindow.button_states["toggle_model"]:
-                        self.pyqtwindow.button_states["toggle_model"] = False
-                        #self.pyqtwindow.toggle_model_button.setChecked(False)  # Uncheck the button visually
+                elif (key == ord('m') or self.pyqtwindow.button_states["toggle model"]) and self.model_manager.model_path != None: # "M": Turns model detection on or off, as shown on the image
+          
+                    if self.pyqtwindow.button_states["toggle model"]:
+                        self.pyqtwindow.button_states["toggle model"] = False
+                   
 
                     
                     self.cv2_img.set_image()
@@ -980,9 +952,9 @@ class AnnotationTool():
 
 
                     
-                elif key == ord('j') or self.pyqtwindow.button_states["decrement_id"]: # "J": Previous object ID
-                    if self.pyqtwindow.button_states["decrement_id"]:
-                        self.pyqtwindow.button_states["decrement_id"]
+                elif key == ord('j') or self.pyqtwindow.button_states["decrement id"]: # "J": Previous object ID
+                    if self.pyqtwindow.button_states["decrement id"]:
+                        self.pyqtwindow.button_states["decrement id"]
                         
 
 
@@ -991,40 +963,34 @@ class AnnotationTool():
                     self.update_img_with_id()
                 
 
-                elif key == ord('b') or self.pyqtwindow.button_states["bbox"]: # bbox mode
-                    if self.pyqtwindow.button_states["bbox"]:
-                        self.pyqtwindow.button_states["bbox"] = False  # Reset the button state after processing it once
-                        # self.pyqtwindow.bbox_button.setChecked(False)  # Uncheck the button visually
-
-                    if self.bbox_mode == False: 
+                elif key == ord('b') or self.pyqtwindow.button_states["bounding box"]: # bbox mode
+                    if self.pyqtwindow.button_states["bounding box"]: #= not self.pyqtwindow.button_states["bounding box"]
+                        self.pyqtwindow.button_states["bounding box"] = False  # Reset the button state after processing it once
                     
+                    if self.bbox_mode == False: 
                         self.bbox_mode = True
                         self.click_count = 0
-                        self.cv2_img.set_image()
-                        self.drawing_annotations() 
                         self.text_to_write = f"Bounding Box Mode - {self.object_id}"
-                        
                         self.pose_mode = False
                         self.editing_mode = False
                         self.bbox_type = "normal"
-                        self.show_image()
                         cv2.setMouseCallback(self.cv2_img.name, self.drawing_bbox)  # Enable mouse callback for keypoint placement
-                    
-
+            
                     else:
                         self.bbox_mode = False
                         self.bbox_type = "normal"
                         self.is_hidden = 0 
                         self.text_to_write = None
-                        self.cv2_img.set_image()
-                        self.drawing_annotations()
-                        self.show_image()
                         cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
+
+                    self.cv2_img.set_image()
+                    self.drawing_annotations()
+                    self.show_image()
                 
                 elif key == ord('p') or self.pyqtwindow.button_states["pose"]: # pose mode
                     if self.pyqtwindow.button_states["pose"]:
                         self.pyqtwindow.button_states["pose"] = False
-                        #self.pyqtwindow.pose_button.setChecked(False)  # Uncheck the button visually
+                        
 
                     if self.pose_mode == False:
                         self.pose_mode = True
@@ -1068,10 +1034,10 @@ class AnnotationTool():
                         self.show_image()
                         cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
 
-
-                elif key == 13 or self.pyqtwindow.button_states["next_img"]:
-                    if self.pyqtwindow.button_states["next_img"]: # enter; next image in dataset  
-                        self.pyqtwindow.button_states["next_img"] = False
+                   
+                elif key == 13 or self.pyqtwindow.button_states["next image"]:
+                    if self.pyqtwindow.button_states["next image"]: # enter; next image in dataset  
+                        self.pyqtwindow.button_states["next image"] = False
                         
                     #cv2.destroyAllWindows()
                     self.pose_mode = False
@@ -1082,9 +1048,9 @@ class AnnotationTool():
                     cv2.destroyAllWindows()
                     return
 
-                elif key == 8 or self.pyqtwindow.button_states["previous_img"]:
-                    if self.pyqtwindow.button_states["previous_img"]:
-                        self.pyqtwindow.button_states["previous_img"] = False # backspace; prev_img 
+                elif key == 8 or self.pyqtwindow.button_states["previous image"]:
+                    if self.pyqtwindow.button_states["previous image"]:
+                        self.pyqtwindow.button_states["previous image"] = False # backspace; prev_img 
                     self.show_image()
                     self.handle_prev_img()
                     return
@@ -1190,9 +1156,9 @@ class AnnotationTool():
                     self.text_to_write = mode_text
                     self.show_image()
                     
-                elif key == ord('n') or self.pyqtwindow.button_states["next_img"]: # next mouse ID
-                    if self.pyqtwindow.button_states["next_img"]:
-                        self.pyqtwindow.button_states["next_img"] = False
+                elif key == ord('n') or self.pyqtwindow.button_states["increment id"]: # next mouse ID
+                    if self.pyqtwindow.button_states["increment id"]:
+                        self.pyqtwindow.button_states["increment id"] = False
               
                     self.object_id += 1
 
@@ -1237,7 +1203,7 @@ class AnnotationTool():
                 }
 
                     for keybind, p_label in pose_options.items():
-                        if key == keybind or self.pyqtwindow.button_states[p_label.lower()]:
+                        if key == keybind or (self.pyqtwindow.button_states[p_label.lower()] ):
                             self.cv2_img.set_image()
                             self.drawing_annotations()
                             self.text_to_write = f"Pose Mode - {p_label} - {self.object_id}"
@@ -1254,11 +1220,7 @@ class AnnotationTool():
     def run_tool(self):
       
         app = QApplication(sys.argv) #
-        # self.pyqtwindow.show()
-
-
-
-        # initializing constants 
+        
         self.model_manager = ModelManager()
         parser = argparse.ArgumentParser()
         parser.add_argument("--frame_skip", type=int, default=50, help="Number of frames to skip")
@@ -1270,10 +1232,7 @@ class AnnotationTool():
 
         self.annotation_files = ["bbox_annotations.json", "pose_annotations.json"]
         self.model_manager.annotation_files = self.annotation_files
-        self.font_scale = 0.5
-        self.font_thickness = 1
-        self.font_color = (255, 255, 0)
-        self.annotation_colors = []
+    
      
         
         screen = screeninfo.get_monitors()[0]  # Assuming you want the primary monitor
@@ -1281,7 +1240,7 @@ class AnnotationTool():
         self.screen_center_x = int((width - 700) / 2)
         self.screen_center_y = int((height - 500)/ 2)
         # creating a list of random annotation colors that are- the same throughout different runs 
-        seed = 42
+        seed = 41
         random.seed(seed)
         for _ in range(30):
             r = random.randint(0, 255)
@@ -1292,17 +1251,15 @@ class AnnotationTool():
             self.annotation_colors.append(color)
 
         self.window_info = {"img_name": None, "coordinates": None, "dimensions": None}
-        # to get the sizing for putting text at appropiate places on the cv2 window
+
         textSize, baseline = cv2.getTextSize("test", cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_thickness)
         textSizeWidth, self.textSizeHeight = textSize
 
         self.video_manager = VideoManager(self.frame_skip, self.annotation_colors, self.annotation_files)
-        # user will choose the video file and/or model file, video file will be extracted as frames into a image directory
-        #video_name = self.extract_frames()
+      
         video_name = self.video_manager.extract_frames()
         self.image_dir = "used_videos/" + video_name.split(".")[0] + "/extracted_frames/"
 
-        assert self.image_dir is not None, "A image folder was empty."
 
         # initialize the json files in the respective video directory
         for annotation_file in self.annotation_files:
@@ -1315,11 +1272,14 @@ class AnnotationTool():
    
         # if a model is selected, otherwise let the user annotate with no model assistance
         if not isinstance(self.model_manager.model_path, tuple) and self.model_manager.model_path != "" and self.model_manager.model_path != None:
+            import torch
+            from ultralytics import YOLO
+
             print("CUDA available?: ", torch.cuda.is_available())
             device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-            #self.model = YOLO(self.video_manager.model_path)
+         
             self.model_manager.model = YOLO(self.model_manager.model_path)
-            #self.model.to(device)
+        
             self.model_manager.model.to(device)
             self.model_detecting = "On"
 
@@ -1361,13 +1321,13 @@ class AnnotationTool():
         # directory list will be the list of clusters if a model is chosen, or a list of extracted frames
         directories = [self.image_dir] if not dir_list else dir_list
         self.annotation_manager = AnnotationManager(self.video_manager.video_dir, self.annotation_files)
-        
+        self.pyqtwindow.show()
         for self.current_dir in directories:
             
             self.imgs = os.listdir(self.current_dir)
             
 
-            with tqdm(total=len(self.imgs), desc=f"cluster {(self.current_dir.split('_')[-1]).replace('/', '')}") as pbar:
+            with tqdm(total=len(self.imgs), desc=f" {(self.current_dir.split('_')[-1]).replace('/', '')}") as pbar:
                 while self.img_num < len(self.imgs):
                     
                     self.is_hidden = 0
@@ -1417,169 +1377,13 @@ class AnnotationTool():
 
 
 
-
-    
-# class PyQtWindow(QMainWindow):
-#     def __init__(self):
-#         super().__init__()
-#         self.window_name = None
-
-
-#         self.button_states = {
-#             "bbox": False,
-#             "pose": False,
-#             "editing": False,
-#             "delete": False,
-#             "undo": False,
-#             "toggle_model": False,
-#             "increment_id": False,
-#             "decrement_id": False,
-#             "next_img": False,
-#             "previous_img": False,
-#             "retrain": False,
-#             "make_video": False,
-#             "head": False,
-#             "tail": False,
-#             "neck": False,
-#             "r hand": False,
-#             "l hand": False,
-#             "r leg": False,
-#             "l leg": False
-#         }
-
-        
-
-#         # add the additonal if conditions to the key presses #######################################
-#         self.setWindowTitle("PyQt Window")
-#         self.setGeometry(400, 100, 200, 480)  # Set geometry (x, y, width, height)
-#         self.original_buttons()
-       
-
-
-#     def original_buttons(self):
-
-#         central_widget = QWidget(self)
-#         self.setCentralWidget(central_widget)
-
-#         # Create a vertical layout for the central widget
-#         self.layout = QVBoxLayout(central_widget)
-#         button_names = [
-#             "Bounding Box", "Pose", "Editing", "Delete", "Undo", "Toggle Model",
-#             "Increment ID", "Decrement ID", "Next Image", "Previous Image",
-#             "Retrain", "Make Video", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"
-#         ]
-
- 
-
-#         self.bbox_button = QPushButton("Bounding Box", self)
-#         self.bbox_button.setCheckable(True)
-#         self.bbox_button.clicked.connect(lambda: self.on_button_clicked("bbox"))
-#         self.layout.addWidget(self.bbox_button)
-
-#         self.pose_button = QPushButton("Pose", self)
-#         self.pose_button.setCheckable(True)
-#         self.pose_button.clicked.connect(lambda: self.on_button_clicked("pose"))
-#         self.layout.addWidget(self.pose_button)
-
-#         self.editing_button = QPushButton("Editing", self)
-#         self.editing_button.setCheckable(True)
-#         self.editing_button.clicked.connect(lambda: self.on_button_clicked("editing"))
-#         self.layout.addWidget(self.editing_button)
-
-#         self.toggle_model_button = QPushButton("Toggle Model", self)
-#         self.toggle_model_button.setCheckable(True)
-#         self.toggle_model_button.clicked.connect(lambda: self.on_button_clicked("toggle_model"))
-#         self.layout.addWidget(self.toggle_model_button)
-
-
-#         for i, name in enumerate(button_names):
-#             if name not in ["Bounding Box", "Pose", "Editing", "Toggle Model", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"]:
-                
-#                 self.button = QPushButton(name, self)
-#                 self.button.setCheckable(False)
-#                 button_state_key = list(self.button_states.keys())[i]  # Get the corresponding key
-#                 self.button.clicked.connect(lambda state, key=button_state_key: self.on_button_clicked(key))
-#                 self.layout.addWidget(self.button)
-           
-
-#         self.setCentralWidget(central_widget)
-
-
-#     def on_button_clicked(self, key):
-        
-        
-
-#         if key == "pose" and self.button_states[key]:
-#             self.button_states[key] = not self.button_states[key]
-    
-#             self.original_buttons()
-            
-
-#         elif key == "pose" and not self.button_states[key]:
-#             self.button_states[key] = not self.button_states[key]
-           
-#             self.pose_keypoint_buttons()
-#             # # Clear layout to remove existing buttons
-#             # for i in reversed(range(self.layout.count())):
-#             #     layout_item = self.layout.itemAt(i)
-#             #     if layout_item.widget() and layout_item.widget() != self.pose_button:
-#             #         layout_item.widget().setParent(None)
-#             # # Add additional buttons below the Pose button
-#             # additional_buttons = ["Button A", "Button B", "Button C"]  # Example additional buttons
-#             # for name in additional_buttons:
-#             #     self.button = QPushButton(name, self)
-#             #     self.button.setCheckable(True)
-#             #     self.layout.addWidget(self.button)
-#         else:
-#             self.button_states[key] = not self.button_states[key]
-
-
-#     def pose_keypoint_buttons(self):
-#         central_widget = QWidget(self)
-#         self.setCentralWidget(central_widget)
-
-#         # Create a vertical layout for the central widget
-#         self.layout = QVBoxLayout(central_widget)
-#         pose_button_names = button_names = [ "Return", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"
-#         ]
-#         for i, name in enumerate(button_names):
-
-                
-#             self.button = QPushButton(name, self)
-#             self.button.setCheckable(True)
-#             button_state_key = list(self.button_states.keys())[i]  # Get the corresponding key
-#             self.button.clicked.connect(lambda state, key=button_state_key: self.on_button_clicked(key))
-#             self.layout.addWidget(self.button)
-           
-
-
-#     def moveEvent(self, event):
-#         # Capture PyQt window movement event
-#         super().moveEvent(event)
-
-#         # Calculate new position for OpenCV window
-#         opencv_x = self.pos().x() + 200  # Adjust as needed
-#         opencv_y = self.pos().y() + 0  # Adjust as needed
-#         AnnotationTool.move_to(self.window_name, opencv_x, opencv_y)
-
-#     def move_to_coordinates(self, x_coord, y_coord):
-#         self.move(x_coord, y_coord)
-
-
-
 if __name__ == "__main__":
 
 
      # Initialize PyQt application and window
     app = QApplication(sys.argv) #
- 
-    # Start PyQt event loop
 
 
-    screen = screeninfo.get_monitors()[0]  # primary monitor
-    width, height = screen.width, screen.height
-    screen_center_x = int((width - 700) / 2)
-    screen_center_y = int((height - 500)/ 2)
     tool = AnnotationTool()
 
     

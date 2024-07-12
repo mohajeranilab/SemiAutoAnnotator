@@ -1,32 +1,7 @@
+from annotation_labeler import *  # Ensure this import is correct
 
-import cv2
-import os
-from pathlib import Path
-from tkinter import filedialog
-import shutil
-import json
-import random
-import torch
-from datetime import datetime
-from ultralytics import YOLO
-import argparse
-import sys
-import pygetwindow as gw
-import screeninfo
-from tkinter import Tk, filedialog, messagebox
-import warnings 
-from tqdm import tqdm
-
-from clustering import *
-from VideoManager import *
-from AnnotationManager import *
-from ModelManager import * 
-from annotation_labeler import * 
-
-
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QComboBox, QPushButton, QWidget, QVBoxLayout
-from PyQt5.QtCore import Qt
-
+from PyQt5.QtWidgets import QMainWindow, QPushButton, QWidget, QVBoxLayout
+from PyQt5.QtGui import QIcon
 
 
 class PyQtWindow(QMainWindow):
@@ -36,18 +11,18 @@ class PyQtWindow(QMainWindow):
 
 
         self.button_states = {
-            "bbox": False,
+            "bounding box": False,
             "pose": False,
             "editing": False,
             "delete": False,
             "undo": False,
-            "toggle_model": False,
-            "increment_id": False,
-            "decrement_id": False,
-            "next_img": False,
-            "previous_img": False,
+            "toggle model": False,
+            "increment id": False,
+            "decrement id": False,
+            "next image": False,
+            "previous image": False,
             "retrain": False,
-            "make_video": False,
+            "make video": False,
             "head": False,
             "tail": False,
             "neck": False,
@@ -57,120 +32,133 @@ class PyQtWindow(QMainWindow):
             "l leg": False
         }
 
-        
-
-        # add the additonal if conditions to the key presses #######################################
-        self.setWindowTitle("PyQt Window")
-        self.setGeometry(400, 100, 200, 480)  # Set geometry (x, y, width, height)
-        self.original_buttons()
-       
-
-
-    def original_buttons(self):
-
+    
+        self.setWindowTitle("Key Presses")
+        self.setGeometry(400, 100, 205, 480)  # (x, y, width, height)
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
 
-        # Create a vertical layout for the central widget
         self.layout = QVBoxLayout(central_widget)
-        button_names = [
-            "Bounding Box", "Pose", "Editing", "Delete", "Undo", "Toggle Model",
-            "Increment ID", "Decrement ID", "Next Image", "Previous Image",
-            "Retrain", "Make Video", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"
-        ]
-
- 
-
-        self.bbox_button = QPushButton("Bounding Box", self)
-        self.bbox_button.setCheckable(True)
-        self.bbox_button.clicked.connect(lambda: self.on_button_clicked("bbox"))
-        self.layout.addWidget(self.bbox_button)
-
-        self.pose_button = QPushButton("Pose", self)
-        self.pose_button.setCheckable(True)
-        self.pose_button.clicked.connect(lambda: self.on_button_clicked("pose"))
-        self.layout.addWidget(self.pose_button)
-
-        self.editing_button = QPushButton("Editing", self)
-        self.editing_button.setCheckable(True)
-        self.editing_button.clicked.connect(lambda: self.on_button_clicked("editing"))
-        self.layout.addWidget(self.editing_button)
-
-        self.toggle_model_button = QPushButton("Toggle Model", self)
-        self.toggle_model_button.setCheckable(True)
-        self.toggle_model_button.clicked.connect(lambda: self.on_button_clicked("toggle_model"))
-        self.layout.addWidget(self.toggle_model_button)
+        self.original_buttons()
 
 
-        for i, name in enumerate(button_names):
-            if name not in ["Bounding Box", "Pose", "Editing", "Toggle Model", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"]:
+    def clear_layout(self):
+        for i in reversed(range(self.layout.count())):
+            widget = self.layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
                 
-                self.button = QPushButton(name, self)
-                self.button.setCheckable(False)
-                button_state_key = list(self.button_states.keys())[i]  # Get the corresponding key
-                self.button.clicked.connect(lambda state, key=button_state_key: self.on_button_clicked(key))
-                self.layout.addWidget(self.button)
-           
 
-        self.setCentralWidget(central_widget)
+    def original_buttons(self):
+      
+        self.clear_layout()
+        
+
+        for button_function in self.button_states.keys():
+            self.button_states[button_function] = False
+
+        button_mappings = {
+            "Bounding Box": "Bounding Box (B)",
+            "Pose": "Pose (P)",
+            "Editing": "Editing (E)",
+            "Toggle Model": "Toggle Model (M)",
+            "Delete": "Delete (D)",
+            "Undo": "Undo (Ctrl + Z)",
+            "Increment ID": "Increment ID (N)",
+            "Decrement ID": "Decrement ID (J)",
+            "Next Image": "Next Image (Enter)",
+            "Previous Image": "Previous Image (Backspace)",
+            "Retrain": "Retrain (R)",
+            "Make Video": "Make Video (V)"
+            
+        }
+        
+
+        for key, text in button_mappings.items():
+            self.button = QPushButton(text, self)
+            self.button.clicked.connect(lambda state, key=key: self.on_button_clicked(key.lower()))
+            icon = QIcon(f"assets/images/{key.lower()}.png")
+            self.layout.addWidget(self.button)
+            self.button.setIcon(icon)
+    
+
+            
+        self.minimize_button = QPushButton("Minimize", self)
+        self.minimize_button.clicked.connect(lambda: self.showMinimized())
+        icon = QIcon("assets/images/minimize.png")
+        self.minimize_button.setIcon(icon)
+        self.layout.addWidget(self.minimize_button)
+
+        self.exit_button = QPushButton("Exit", self)
+        self.exit_button.clicked.connect(lambda: self.close())
+        icon = QIcon("assets/images/exit.png")
+        self.exit_button.setIcon(icon)
+        self.layout.addWidget(self.exit_button)
+            
 
 
     def on_button_clicked(self, key):
+        self.button_states[key] = not self.button_states[key]
         
-        
-
-        if key == "pose" and self.button_states[key]:
-            self.button_states[key] = not self.button_states[key]
-    
-            self.original_buttons()
-            
-
-        elif key == "pose" and not self.button_states[key]:
-            self.button_states[key] = not self.button_states[key]
-           
-            self.pose_keypoint_buttons()
-            # # Clear layout to remove existing buttons
-            # for i in reversed(range(self.layout.count())):
-            #     layout_item = self.layout.itemAt(i)
-            #     if layout_item.widget() and layout_item.widget() != self.pose_button:
-            #         layout_item.widget().setParent(None)
-            # # Add additional buttons below the Pose button
-            # additional_buttons = ["Button A", "Button B", "Button C"]  # Example additional buttons
-            # for name in additional_buttons:
-            #     self.button = QPushButton(name, self)
-            #     self.button.setCheckable(True)
-            #     self.layout.addWidget(self.button)
+        if key == "pose":
+            if self.button_states[key]:
+                self.pose_keypoint_buttons()
+            else:
+                self.original_buttons()
         else:
-            self.button_states[key] = not self.button_states[key]
+            for k in self.button_states.keys():
+                if k != key:
+                    self.button_states[k] = False
+
+          
 
 
     def pose_keypoint_buttons(self):
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
 
-        # Create a vertical layout for the central widget
-        self.layout = QVBoxLayout(central_widget)
-        pose_button_names = button_names = [ "Return", "Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"
-        ]
-        for i, name in enumerate(button_names):
+        self.clear_layout()
+        
+
+        pose_button_names = ["Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"]
+        for i, name in enumerate(pose_button_names):
 
                 
-            self.button = QPushButton(name, self)
-            self.button.setCheckable(True)
-            button_state_key = list(self.button_states.keys())[i]  # Get the corresponding key
-            self.button.clicked.connect(lambda state, key=button_state_key: self.on_button_clicked(key))
+            self.button = QPushButton(name + f" ({(i+1)})", self)
+      
+    
+            self.button.clicked.connect(lambda state, key=name: self.on_button_clicked(key.lower()))
+            icon = QIcon(f"assets/images/{name.lower()}.png")
+            self.button.setIcon(icon)
             self.layout.addWidget(self.button)
            
+        self.return_button = QPushButton("Return", self)
+        self.return_button.clicked.connect(self.original_buttons)
+        icon = QIcon("assets/images/undo.png")
+        self.return_button.setIcon(icon)
+        self.layout.addWidget(self.return_button)
+
+        self.minimize_button = QPushButton("Minimize", self)
+        self.minimize_button.clicked.connect(lambda: self.showMinimized())
+        icon = QIcon("assets/images/minimize.png")
+        self.minimize_button.setIcon(icon)
+        self.layout.addWidget(self.minimize_button)
+
+        self.exit_button = QPushButton("Exit", self)
+        self.exit_button.clicked.connect(lambda: self.close())
+        icon = QIcon("assets/images/exit.png")
+        self.exit_button.setIcon(icon)
+        self.layout.addWidget(self.exit_button)
 
 
     def moveEvent(self, event):
-        # Capture PyQt window movement event
+  
         super().moveEvent(event)
 
-        # Calculate new position for OpenCV window
-        opencv_x = self.pos().x() + 200  # Adjust as needed
-        opencv_y = self.pos().y() + 0  # Adjust as needed
-        AnnotationTool.move_to(self.window_name, opencv_x, opencv_y)
+    
+        if self.window_name:
+            opencv_x = self.pos().x() + 200
+            opencv_y = self.pos().y()
+            AnnotationTool.move_to(self.window_name, opencv_x, opencv_y)
 
     def move_to_coordinates(self, x_coord, y_coord):
         self.move(x_coord, y_coord)
+
