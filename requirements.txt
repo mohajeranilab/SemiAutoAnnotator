@@ -1,5 +1,7 @@
+python_version >= '3.9'
 opencv-python==4.9.0.80
 PyQt5==5.15.10
 tqdm==4.66.2
 screeninfo==0.8.1
 pywinctl==0.4
+numpy==1.26.3
