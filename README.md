@@ -14,7 +14,7 @@ The user will start annotating images and will be assisted by a model that provi
     ```bash
     pip install -r requirements_gpu.txt
     ```
-    or if you do not have a GPU
+    or if you do not have a GPU and would like to use the annotation tool without the assistance of a model
     ```bash
     pip install -r requirements.txt
 
@@ -23,7 +23,7 @@ Run the annotation_labeler.py file, two optional arguments can be passed,
 ```bash
 --frame_skip= (default: 50) --model_path= (default: None)
 ``` 
-It is necessary to specify a path to the model/weights file if you want the assistance of a model. Aftewards, the program will give you a file explorer window to select the video file you want to annotate (it will extract frames for you)
+It is necessary to specify a path to the model/weights file if you want the assistance of a model. Aftewards, the program will give you a file explorer window to select the video file you want to annotate (it will extract frames for you).
 
 
 "In the 'used_videos/' directory, a folder will be created for each selected video, containing the video file itself along with subfolders for extracted frames and JSON annotations. The structure will look like this:
@@ -32,6 +32,7 @@ used_videos/
 └── video_name_folder/
     ├── extracted_frames/
         └── img_0.jpg
+        └── ...
     ├── video_name.mp4
     ├── bbox_annotations.json
     └── pose_annotations.json
@@ -39,23 +40,30 @@ used_videos/
 The annotations created in the json files are very similar to the COCO dataset format. 
 
 <!-- When the program runs and an image is open, if the model is able to detect bounding boxes, you will have to assign the ID to the box. Simply click in the middle of the box to select the ID, pressing "N" to increase the ID if needed. -->
+You can either press the buttons on the PyQt GUI on the side, or by pressing the specific keybinds. The following key and button presses provide different results when the image window is SELECTED.
 
-
-The following keypresses provide different results when the image window is open:
-- “B”: Bounding Box Mode. Press “B” to begin drawing a bounding box around an object (click, drag, and release).
+- “B”: Bounding Box Mode. Begin drawing a bounding box around an object (click, drag, and release).
   - “F”. Annotation Feces. After entering Bounding Box Mode, you can press “F” to annotate for feces.
   - “H”. Hidden Annotations. After entering Bounding Box Mode, you can press “H” to start a hidden annotation for certain objects that are hidden or out of the screen. 
-- “P”. Pose Mode. Once it is in pose mode, you can press on numbers 1-3 for different parts of the mouse to annotate and place down keypoints.  
-- “D”. Deletes Annotations. Press D to delete all annotations for the current image.
-- “Ctrl+Z”. Undo. Press Ctrl+Z to undo the last annotation, if there are no annotations in the current image, go back to the previous image.
-- “Enter”. Next Image. Press Enter to go to the next image of the dataset.
-- “Delete”. Last Image. Press Delete to go back to the previous image of the dataset.
-- “Esc”. Exit. Press Esc to exit out of the program. 
-- “N”. Next Object ID. Press “N” to get the next object ID, the ID should be displayed at the top of the screen. 
-- “R”. Retrain. When “R” is pressed, a file explorer window will appear and the user can select the video folders they want to train on if it has annotated frames. the model will be retrained using the current annotations made. It will exit the program and enter the training mode. 
-- “V”. Make Video. When “V” is pressed, a file explorer window will appear and the user can select the video folder they want to create a clip with the annotations made for that video, the clip will be saved as “output_video.mp4”.
-- “M”. Toggle Model. When “M” is pressed, the model will either be turned off or on, the default is set to on.
-- "E". Editing Mode. When "E" is pressed, the user will now be able to edit the annotations made. To edit the bbox annotations, click and drag one of the four squares
+- “P”. Pose Mode. Once it is in pose mode, you can press on numbers 1-7 for different parts of the mouse to annotate and place down keypoints.  
+  - "1". Head 
+  - "2". Tail
+  - "3". Neck
+  - "4". R Hand
+  - "5". L Hand
+  - "6". R Leg
+  - "7". L Leg
+- “D”. Deletes Annotations. Deletes all annotations for the current image.
+- “Ctrl+Z”. Undo. Undo the last annotation, if there are no annotations in the current image, go back to the previous image.
+- “Enter”. Next Image. Goes to the next image of the dataset.
+- “Backspace/Delete”. Last Image. Goes to the previous image of the dataset.
+- “Esc”. Exit. Exits out of the program. 
+- “N”. Increment Object ID. Increase the object ID by 1.
+- "J". Decrement Object ID. Decrease the object ID by 1. 
+- “R”. Retrain. A file explorer window will appear and the user can select the video folders they want to train on ONLY IF it has annotated frames. The model being used currently will be used as pretrained weights during training. After the training process by YOLO is completed, it will exit out of the program.
+- “V”. Make Video. A file explorer window will appear and the user can select the video folder they want to create a clip with the annotations made for that video, the clip will be saved as “output_video.mp4”.
+- “M”. Toggle Model. The model will either be turned off or on, the default is set to on. If no model is given when starting the program, it will be set to off permanently.
+- "E". Editing Mode. The user will now be able to edit the annotations made. To edit the bbox annotations, click and drag one of the four squares
 
 
 
