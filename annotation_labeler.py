@@ -1274,7 +1274,7 @@ class AnnotationTool():
         if not isinstance(self.model_manager.model_path, tuple) and self.model_manager.model_path != "" and self.model_manager.model_path != None:
             import torch
             from ultralytics import YOLO
-            from clustering import *
+            from clustering import initialize_clustering
 
             print("CUDA available?: ", torch.cuda.is_available())
             device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -1284,13 +1284,13 @@ class AnnotationTool():
             self.model_manager.model.to(device)
             self.model_detecting = "On"
 
-            # comment this to turn off clustering 
-            # initialize_clustering(Path(self.image_dir), self.model_manager.model_path)
-            # dir_list = os.listdir("used_videos/" + video_name.split(".")[0] + "/clusters/")
-            # for i, dir in enumerate(dir_list):
-            #     dir_list[i] = "used_videos/" + video_name.split(".")[0] + "/clusters/" + dir + "/" 
-            # # delete extracted_frames to save space
-            # shutil.rmtree(self.image_dir, ignore_errors=True)
+            #comment this to turn off clustering 
+            initialize_clustering(Path(self.image_dir), self.model_manager.model_path)
+            dir_list = os.listdir("used_videos/" + video_name.split(".")[0] + "/clusters/")
+            for i, dir in enumerate(dir_list):
+                dir_list[i] = "used_videos/" + video_name.split(".")[0] + "/clusters/" + dir + "/" 
+            # delete extracted_frames to save space
+            shutil.rmtree(self.image_dir, ignore_errors=True)
         else:
             dir_list = None
             self.model_detecting = "Off"
