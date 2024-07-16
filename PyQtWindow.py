@@ -118,7 +118,7 @@ class PyQtWindow(QMainWindow):
         self.clear_layout()
         
 
-        pose_button_names = ["Head", "Tail", "Neck", "R Hand", "L Hand", "R Leg", "L Leg"]
+        pose_button_names = ["Head", "Neck", "Tail", "R Hand", "L Hand", "R Leg", "L Leg"]
         for i, name in enumerate(pose_button_names):
 
                 

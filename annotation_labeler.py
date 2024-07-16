@@ -13,7 +13,7 @@ from tqdm import tqdm
 import pywinctl as pwc
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
-
+import copy
 
 from VideoManager import *
 from AnnotationManager import *
@@ -78,7 +78,7 @@ class AnnotationTool():
         self.corner_size = 10
 
         self.font_scale = 0.5
-        self.font_thickness = 1
+        self.font_thickness = 0
         self.font_color = (255, 255, 0)
         self.window_info = {"img_name": None, "coordinates": None, "dimensions": None}
    
@@ -217,13 +217,16 @@ class AnnotationTool():
     def drawing_annotations(self):
         annotation_types = ["bbox", "pose"]
 
-        for type_idx, annotation_type in enumerate(annotation_types):
-            with open(self.video_manager.video_dir + "\\" + self.annotation_files[type_idx], 'r') as f:
+
+        for annotation_file in self.annotation_files:
+            with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+        
                 annotations = json.load(f)
             
             for annotation in annotations["annotations"]:
                 if annotation["image_id"] == self.img_id:
-                    if annotation_type == "bbox":
+            
+                    if annotation["type"].split()[-1] == "bounding_box":
                    
                         corner_points = [(annotation["bbox"][0], annotation["bbox"][1]), (annotation["bbox"][2], annotation["bbox"][1]), (annotation["bbox"][0], annotation["bbox"][3]), (annotation["bbox"][2], annotation["bbox"][3])]
                         for corner_x, corner_y in corner_points:
@@ -232,12 +235,31 @@ class AnnotationTool():
                         cv2.putText(self.cv2_img.get_image(), str(annotation["object_id"]), (annotation["bbox"][2] - 20, annotation["bbox"][3] - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
                         if annotation["type"] == "detected bounding_box":
                             cv2.putText(self.cv2_img.get_image(), f"{annotation['conf']:.2f}", (annotation["bbox"][0], annotation["bbox"][3]), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
-                    elif annotation_type == "pose":
+               
+                    elif annotation["type"] == "pose":
                         for keypoint_annotation in annotation["keypoints"]: 
                     
                             if keypoint_annotation[1][0] != None or keypoint_annotation[1][1] != None:
                                 cv2.circle(self.cv2_img.get_image(), (keypoint_annotation[1][0], keypoint_annotation[1][1]), 5, self.annotation_colors[annotation["object_id"]], -1)
-                                cv2.putText(self.cv2_img.get_image(), keypoint_annotation[0].capitalize(), (keypoint_annotation[1][0], keypoint_annotation[1][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+                                cv2.putText(self.cv2_img.get_image(), keypoint_annotation[0].capitalize(), (keypoint_annotation[1][0], keypoint_annotation[1][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale-0.25, self.font_color, self.font_thickness)
+                        if annotation['keypoints']:
+                            keypoints = {kp[0]: kp[1] for kp in annotation['keypoints']}
+          
+                       
+                            keypoint_pairs = [
+                                ("head", "neck"),
+                                ("neck", "tail"),
+                                ("neck", "l hand"),
+                                ("neck", "r hand"),
+                                ("tail", "l leg"),
+                                ("tail", "r leg")
+                            ]
+
+                            for key1, key2 in keypoint_pairs:
+                                if key1 in keypoints and key2 in keypoints:
+                                    pt1 = tuple(keypoints[key1])
+                                    pt2 = tuple(keypoints[key2])
+                                    cv2.line(self.cv2_img.get_image(), pt1, pt2, self.annotation_colors[annotation["object_id"]], thickness=1)
 
     def editing(self, event, x, y, flags, param):
         global move_top_left, move_top_right, move_bottom_right, move_bottom_left, move_pose_point, file_to_dump
@@ -347,7 +369,7 @@ class AnnotationTool():
             if move_pose_point:
                 for i, keypoint in enumerate(self.temp_keypoints):
                     if keypoint[0] == self.keypoint_type and keypoint[1] == self.keypoint_value:
-                        #keypoint[1] = (x, y)
+                        
                         self.temp_keypoints[i][1] = (x, y)
                 info = {
                     "images": {
@@ -363,15 +385,15 @@ class AnnotationTool():
                         "object_id":self.object_id,
                         "iscrowd": 0,
                         "type": "pose",
-                        "is_hidden": self.is_hidden,
                         "conf": 1,
                         "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         
                     }
                 }
         
-                self.show_image()
                 self.annotation_manager.save_to_json(info, "pose")
+                self.drawing_annotations()
+                self.show_image()
             elif move_top_left:
                 top_left_x, top_left_y = x, y 
                 bottom_right_x, bottom_right_y = self.temp_bbox_coords[2], self.temp_bbox_coords[3]
@@ -409,8 +431,9 @@ class AnnotationTool():
             
         
                 cv2.rectangle(self.cv2_img.get_image(), (top_left_x, top_left_y), (bottom_right_x, bottom_right_y), self.annotation_colors[self.object_id], 2)
-                self.show_image()
                 self.annotation_manager.save_to_json(info, "bbox")
+                self.drawing_annotations()
+                self.show_image()
             elif move_top_right:
                 top_left_x, top_left_y = self.temp_bbox_coords[0], y 
                 bottom_right_x, bottom_right_y = x, self.temp_bbox_coords[3]
@@ -449,8 +472,9 @@ class AnnotationTool():
         
                 cv2.rectangle(self.cv2_img.get_image(), (top_left_x, top_left_y), ( bottom_right_x, bottom_right_y), self.annotation_colors[self.object_id], 2)
          
-                self.show_image()
                 self.annotation_manager.save_to_json(info, "bbox")
+                self.drawing_annotations()
+                self.show_image()
 
             elif move_bottom_left:
                 
@@ -490,8 +514,9 @@ class AnnotationTool():
         
                 cv2.rectangle(self.cv2_img.get_image(), (top_left_x, top_left_y), ( bottom_right_x, bottom_right_y), self.annotation_colors[self.object_id], 2)
          
-                self.show_image()
                 self.annotation_manager.save_to_json(info, "bbox")
+                self.drawing_annotations()
+                self.show_image()
 
             elif move_bottom_right:
                 top_left_x, top_left_y = self.temp_bbox_coords[0], self.temp_bbox_coords[1]
@@ -531,8 +556,9 @@ class AnnotationTool():
         
                 cv2.rectangle(self.cv2_img.get_image(), (top_left_x, top_left_y), (bottom_right_x, bottom_right_y), self.annotation_colors[self.object_id], 2)
          
-                self.show_image()
                 self.annotation_manager.save_to_json(info, "bbox")
+                self.drawing_annotations()
+                self.show_image()
                 
 
         
@@ -580,10 +606,10 @@ class AnnotationTool():
                     for keypoint in self.temp_keypoints:
                         if keypoint[0] != self.keypoint_type or keypoint[1] != self.keypoint_value:
                             cv2.circle(self.cv2_img.get_image(), (keypoint[1][0], keypoint[1][1]), 5, self.annotation_colors[self.object_id], -1)
-                            cv2.putText(self.cv2_img.get_image(), keypoint[0].capitalize(), (keypoint[1][0], keypoint[1][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+                            cv2.putText(self.cv2_img.get_image(), keypoint[0].capitalize(), (keypoint[1][0], keypoint[1][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale - 0.25, self.font_color, self.font_thickness)
                     if self.keypoint_type != None and self.keypoint_value != None:
                         cv2.circle(self.cv2_img.get_image(), (x, y), 5, self.annotation_colors[self.object_id], -1)
-                        cv2.putText(self.cv2_img.get_image(), self.keypoint_type.capitalize(), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+                        cv2.putText(self.cv2_img.get_image(), self.keypoint_type.capitalize(), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale - 0.25, self.font_color, self.font_thickness)
 
                 elif move_top_left:
                     x1, y1 = x, y  # Top-left corner of the main rectangle
@@ -676,18 +702,18 @@ class AnnotationTool():
             self.cv2_img.set_image()
             self.drawing_annotations()
         
-                
-            cv2.rectangle(self.cv2_img.get_image(), (start_x, start_y), (x, y), self.annotation_colors[self.object_id], 2)
+            image = self.cv2_img.get_image()
+            cv2.rectangle(image, (start_x, start_y), (x, y), self.annotation_colors[self.object_id], 2)
 
             if self.is_hidden == 1:
-        
                 self.text_to_write = f"Bounding Box Mode - Hidden - {self.object_id}"
-            elif self.bbox_type == "feces":
-                self.text_to_write = f"Bounding Box Mode - Feces"
-            elif self.bbox_type == "normal":
-                self.text_to_write = f"Bounding Box Mode - {self.object_id}"
-            
-            cv2.putText(self.cv2_img.get_image(), str(self.object_id), (max(start_x, x) - 20, max(start_y, y) - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
+            else:
+                if self.bbox_type == "feces":
+                    self.text_to_write = "Bounding Box Mode - Feces"
+                else:
+                    self.text_to_write = f"Bounding Box Mode - {self.object_id}"
+                    
+            cv2.putText(image, str(self.object_id), (max(start_x, x) - 20, max(start_y, y) - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
             self.show_image()
             
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -771,8 +797,7 @@ class AnnotationTool():
             point = (x, y)
             cv2.circle(self.cv2_img.get_image(), (point[0], point[1]), 5, self.annotation_colors[self.object_id], -1)
 
-            cv2.putText(self.cv2_img.get_image(), self.pose_type.capitalize(), (point[0], point[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
-            self.show_image()
+            cv2.putText(self.cv2_img.get_image(), self.pose_type.capitalize(), (point[0], point[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale - 0.25, self.font_color, self.font_thickness)
             to_append = (self.pose_type, (point))    
             for annotation in data["annotations"]:
                 if annotation["id"] == self.annotation_manager.id:
@@ -782,7 +807,10 @@ class AnnotationTool():
                 
             with open(self.video_manager.video_dir + "/pose_annotations.json", 'w') as f:
                 json.dump(data, f, indent = 4)
-
+       
+            self.drawing_annotations()
+            #self.text_to_write = self.pose_type.capitalize()
+            self.show_image()
 
 
     
@@ -883,12 +911,85 @@ class AnnotationTool():
                 self.model_manager.predicting()
               
     
+            prev_img_id = self.img_id - 1
+            for annotation_file in self.annotation_files:
+                with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+                    data = json.load(f)
+
+                for image_data in data["images"]:
+                    if prev_img_id == image_data["id"]:
+                        break
+                for annotation_data in data["annotations"]:
+                    if prev_img_id == annotation_data["image_id"]:
+                        if annotation_data["type"] == "normal bounding_box":
+                            info = {
+                                "id": self.get_id(self.annotation_files, self.video_manager, "annotations"), 
+                                "bbox": annotation_data["bbox"],
+                                "image_id": self.img_id,
+                                "object_id": annotation_data["object_id"],
+                                "iscrowd": annotation_data["iscrowd"],
+                                "area": annotation_data["area"],
+                                "type": annotation_data["type"],
+                                "is_hidden": annotation_data["is_hidden"],
+                                "conf": 1,
+                                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            }
+                            
+
+                        elif annotation_data["type"] == "pose":
+                            
+                            info = {
+                                "id": self.get_id(self.annotation_files, self.video_manager, "annotations"),
+                                "keypoints": annotation_data["keypoints"],
+                                "image_id": self.img_id,
+                                "object_id": annotation_data["object_id"],
+                                "iscrowd": annotation_data["iscrowd"],
+                                "type": annotation_data["type"],
+                                "conf": 1,
+                                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            }
+                            if info:
+                                info_copy = copy.deepcopy(info)
+                            
+                                del info_copy["id"]
+                                del info_copy["time"]
+
+                                found_annotation = False
+                                for annotation in data["annotations"]:
+                                    annotation_copy = copy.deepcopy(annotation)
+                                    del annotation_copy["id"]
+                                    del annotation_copy["time"]
+                                    if annotation_copy == info_copy:
+                                        found_annotation = True
+                                        break
+
+                                if not found_annotation:
+                                    data["annotations"].append(info)
+
+                            if not any(image["id"] == self.img_id for image in data["images"]):
+                                new_image_info = {
+                                    "id": self.img_id,
+                                    "file_name": self.cv2_img.path,
+                                    "image_height": self.cv2_img.height,
+                                    "image_width": self.cv2_img.width
+                                }
+                                data["images"].append(new_image_info)
+
+
+                            with open(self.video_manager.video_dir + "\\" + annotation_file, 'w') as f:
+                                
+                                json.dump(data, f, indent=4)
         
             self.drawing_annotations()
             self.text_to_write = None 
             self.show_image()
 
             self.pyqtwindow.window_name = self.cv2_img.name
+
+
+           
+            
+                
             while True:
                 key = cv2.waitKey(1)
              
@@ -900,6 +1001,7 @@ class AnnotationTool():
                     sys.exit()
 
                 elif key == ord('e') or self.pyqtwindow.button_states["editing"]:
+             
                     if self.pyqtwindow.button_states["editing"]:
                         self.pyqtwindow.button_states["editing"] = False
                         
@@ -923,6 +1025,7 @@ class AnnotationTool():
                         self.drawing_annotations()
                         self.show_image()
                         cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
+
                 elif key == ord('r') or self.pyqtwindow.button_states["retrain"]:
                     if self.pyqtwindow.button_states["retrain"]:
                         self.pyqtwindow.button_states["retrain"] = False
@@ -967,7 +1070,7 @@ class AnnotationTool():
                     if self.pyqtwindow.button_states["bounding box"]: #= not self.pyqtwindow.button_states["bounding box"]
                         self.pyqtwindow.button_states["bounding box"] = False  # Reset the button state after processing it once
                     
-                    if self.bbox_mode == False: 
+                    if not self.bbox_mode: 
                         self.bbox_mode = True
                         self.click_count = 0
                         self.text_to_write = f"Bounding Box Mode - {self.object_id}"
@@ -1042,6 +1145,7 @@ class AnnotationTool():
                     #cv2.destroyAllWindows()
                     self.pose_mode = False
                     self.bbox_mode = False
+                    self.editing_mode = False
                     self.already_passed = False
                     self.object_id = 1
                     self.show_image()
@@ -1194,8 +1298,8 @@ class AnnotationTool():
 
                     pose_options = {
                     ord('1'): ("Head"),
-                    ord('2'): ("Tail"),
-                    ord('3'): ("Neck"),
+                    ord('2'): ("Neck"),
+                    ord('3'): ("Tail"),
                     ord('4'): ("R Hand"),
                     ord('5'): ("L Hand"),
                     ord('6'): ("R Leg"),
@@ -1203,7 +1307,9 @@ class AnnotationTool():
                 }
 
                     for keybind, p_label in pose_options.items():
-                        if key == keybind or (self.pyqtwindow.button_states[p_label.lower()] ):
+                        if key == keybind or (self.pyqtwindow.button_states[p_label.lower()]):
+                            if self.pyqtwindow.button_states[p_label.lower()]:
+                                self.pyqtwindow.button_states[p_label.lower()] = False
                             self.cv2_img.set_image()
                             self.drawing_annotations()
                             self.text_to_write = f"Pose Mode - {p_label} - {self.object_id}"
@@ -1284,13 +1390,14 @@ class AnnotationTool():
             self.model_manager.model.to(device)
             self.model_detecting = "On"
 
-            #comment this to turn off clustering 
-            initialize_clustering(Path(self.image_dir), self.model_manager.model_path)
-            dir_list = os.listdir("used_videos/" + video_name.split(".")[0] + "/clusters/")
-            for i, dir in enumerate(dir_list):
-                dir_list[i] = "used_videos/" + video_name.split(".")[0] + "/clusters/" + dir + "/" 
-            # delete extracted_frames to save space
-            shutil.rmtree(self.image_dir, ignore_errors=True)
+            # comment the below code to turn off/on clustering 
+
+            # initialize_clustering(Path(self.image_dir), self.model_manager.model_path)
+            # dir_list = os.listdir("used_videos/" + video_name.split(".")[0] + "/clusters/")
+            # for i, dir in enumerate(dir_list):
+            #     dir_list[i] = "used_videos/" + video_name.split(".")[0] + "/clusters/" + dir + "/" 
+            # # delete extracted_frames to save space
+            # shutil.rmtree(self.image_dir, ignore_errors=True)
         else:
             dir_list = None
             self.model_detecting = "Off"
@@ -1307,7 +1414,7 @@ class AnnotationTool():
                 self.annotations_exists = True
                 break
 
-
+        result = "no"
         # Create a window pop up to determine if user wants to continue where they left off 
         if self.annotations_exists:
             window = Tk()
