@@ -84,7 +84,7 @@ labeler_dataset/
         └── img_2.txt
 ```
 
-## Importat Notes
+## Important Notes
 - This code can not be ran using WSL1/2 due to the lack of native GUI support. It may work using an X-Server but this has not been tested yet.
-- Python3.9 or above is needed to run this program (to utilize PyQt).
+<!-- - Python3.9 or above is needed to run this program (to utilize PyQt). -->
 - The PyQt GUI window of buttons can be closed.
