@@ -9,14 +9,20 @@ from tkinter import Tk, filedialog
 class VideoManager():
 
     def __init__(self, frame_skip, annotation_colors, annotation_files):
+   
         self.video_dir = None
         self.frame_skip = frame_skip
         self.cv2_img = None
         self.annotation_colors = annotation_colors 
-        self.model_path = None
         self.annotation_files = annotation_files 
 
     def extract_frames(self):
+        """
+        Extract frames from a selected video that the user wants to annotate 
+
+        Returns:
+            video_name (str): name of selected video        
+        """
         root = Tk()
         root.attributes("-topmost", True)
         root.withdraw()
@@ -31,12 +37,13 @@ class VideoManager():
             print("No video file selected.")
             sys.exit()
         
+        # extracting video name and creating a directory for the video
         video_name, _ = os.path.splitext(os.path.basename(video_path))
         self.video_dir = os.path.join("used_videos", video_name)
-        
         os.makedirs(self.video_dir, exist_ok=True)
 
       
+        # copying video to the 'used_videos/{video_name}/ directory
         shutil.copy(video_path, "used_videos/" + video_name.split(".")[0])
     
  
@@ -52,6 +59,8 @@ class VideoManager():
         extracted_count = 0
 
         base_name = os.path.splitext(os.path.basename(video_path))[0]
+
+        # extract frames
         while True:
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_count)
             frame_filename = os.path.join(self.video_dir + "/extracted_frames/", f"{base_name}_img_{frame_count:05d}.jpg")
@@ -62,7 +71,7 @@ class VideoManager():
                 if not ret:
                     break
             
-            # Skipping by FRAME_SKIP to shorten how many frames are needed to annotate
+                # skipping by frame_skip to shorten how many frames are needed to annotate
                 if frame_count % self.frame_skip == 0:
                     
                 
@@ -75,14 +84,14 @@ class VideoManager():
         cap.release()
         print(f"Extracted {extracted_count} new frames to 'extracted_frames'")
 
-
-        #self.model_path = filedialog.askopenfilename(initialdir="/", title="SELECT MODEL/WEIGHTS FILE")
-
         root.destroy()
       
         return video_name
     
     def make_video(self):
+        """
+        Creates a video from the selected frames that have been annotated. An output video will be created 
+        """
 
         video_path = filedialog.askdirectory(
             initialdir="/", 
@@ -96,22 +105,21 @@ class VideoManager():
         video = cv2.VideoWriter("output_video.avi", fourcc, 30.0, (self.cv2_img.width, self.cv2_img.height))
         frames_to_write = {}
 
-        # First, gather all frames to write
+        # read annotations from files
         for annotation_file in self.annotation_files:
-        
             with open(video_path + "\\" + annotation_file, 'r') as f:
                 data = json.load(f)
             if len(data["annotations"]) != 0:
                 for image_data in data["images"]:
                     frames_to_write[image_data["id"]] = image_data["file_name"]
-            else:
-                continue
+
         if not frames_to_write:
             print("No annotations have been made for the selected video")
 
-
+        
+        # collecting all annotations for each frame
         all_annotations = {}
-
+        
         for annotation_file in self.annotation_files:
             with open(video_path + "\\" + annotation_file, 'r') as f:
                 data = json.load(f)
@@ -122,7 +130,7 @@ class VideoManager():
                     all_annotations[image_id] = []
                 all_annotations[image_id].append((annotation_file, annotation))
 
-        # Draw all annotations on each frame
+        # draw all annotations on each frame and write to video
         for image_id, image_file in frames_to_write.items():
             if image_id in all_annotations:
                 self.cv2_img.set_image()

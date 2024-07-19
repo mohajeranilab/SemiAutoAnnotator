@@ -4,7 +4,7 @@ from pathlib import Path
 import shutil
 import json
 import random
-from datetime import datetime
+from datetime import datetime, timedelta
 import argparse
 import sys
 import screeninfo
@@ -20,11 +20,19 @@ from AnnotationManager import *
 from ModelManager import * 
 from PyQtWindow import *
 
-
-
-
 class CV2Image():
     def __init__(self, path, name):
+        """
+        Initializes a CV2Image object with the given image path and name.
+
+        Params:
+            path (str): The file path to the image
+            name (str): The name of the image
+
+        Raises:
+             ValueError: If the image cannot be loaded.
+        """
+
         if path:
             self.image = cv2.imread(path)
         if self.image is None:
@@ -38,17 +46,17 @@ class CV2Image():
         """
         Returns the image.
         
-        :return: The image array
+        Returns:
+           image (np.array): image read using cv2
         """
-        #self.image = cv2.imread(self.path)
+
         return self.image
     
     def set_image(self):
         """
         Sets the image.
-        
-        :param image: The image array
         """
+
         self.image = cv2.imread(self.path)
         
 
@@ -83,7 +91,6 @@ class AnnotationTool():
         self.window_info = {"img_name": None, "coordinates": None, "dimensions": None}
    
         self.editing_mode = False
-
         self.bbox_mode = False
         self.pose_mode = False
         self.bbox_type = None
@@ -91,19 +98,15 @@ class AnnotationTool():
         self.pose_type = None
         self.current_dir = None
         self.imgs = None 
-        self.pyqtwindow.setWindowFlags(Qt.WindowStaysOnTopHint)
-       
-        # Define other necessary attributes
 
-   
-        # 
+        self.redo_stack = []
+        self.pyqtwindow.setWindowFlags(Qt.WindowStaysOnTopHint)
 
     
     
     def dummy_function(self, event, x, y, flags, param):
         pass
 
-   
 
     def show_image(self): 
         """
@@ -142,7 +145,7 @@ class AnnotationTool():
                 window_width, window_height = self.cv2_img.width, self.cv2_img.height
 
         flag = False
-        #cv2.destroyAllWindows()
+        
         if self.window_info["img_name"] != self.cv2_img.name:
             
             self.window_info = {}
@@ -151,6 +154,7 @@ class AnnotationTool():
             self.window_info["dimensions"] = (window_width, window_height)
             flag = True
         cv2.namedWindow(self.cv2_img.name, cv2.WINDOW_NORMAL)  
+
         if flag:
             cv2.resizeWindow(self.cv2_img.name, (1, 1))
             cv2.moveWindow(self.cv2_img.name, -5000, -5000)
@@ -172,10 +176,12 @@ class AnnotationTool():
     def move_to(window_name, x, y):
         cv2.moveWindow(window_name, x, y)
 
+
     def handle_prev_img(self):
 
         self.bbox_mode = False
         self.pose_mode = False
+        self.editing_mode = False
         self.already_passed = True
         self.click_count = 0
 
@@ -194,11 +200,11 @@ class AnnotationTool():
                 if self.img_num > 0:
                     self.img_num -= 1 
         
-                
             else:
                 self.img_num -= 1
                 cv2.destroyAllWindows() 
                 return
+
 
     @staticmethod
     def get_id(annotation_files, video_manager, data_type):    
@@ -212,11 +218,9 @@ class AnnotationTool():
             id += 1
         return id
 
-    
 
     def drawing_annotations(self):
         annotation_types = ["bbox", "pose"]
-
 
         for annotation_file in self.annotation_files:
             with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
@@ -261,10 +265,11 @@ class AnnotationTool():
                                     pt2 = tuple(keypoints[key2])
                                     cv2.line(self.cv2_img.get_image(), pt1, pt2, self.annotation_colors[annotation["object_id"]], thickness=1)
 
-    def editing(self, event, x, y, flags, param):
-        global move_top_left, move_top_right, move_bottom_right, move_bottom_left, move_pose_point, file_to_dump
 
+    def editing(self, event, x, y, flags, param):
+        global move_top_left, move_top_right, move_bottom_right, move_bottom_left, move_pose_point, file_to_dump, moved
         if event == cv2.EVENT_LBUTTONDOWN:
+            self.temp_bbox_coords = None
             breakout = False
             if self.click_count == 0:
                 for annotation_file in self.annotation_files:
@@ -273,425 +278,196 @@ class AnnotationTool():
                     with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
                         data = json.load(f)
 
-                    for image_data in data["images"]:
-                        if image_data["file_name"] == self.cv2_img.path:
-                            img_id = image_data["id"]
-                    
+                    img_id = next((img_data["id"] for img_data in data["images"] if img_data["file_name"] == self.cv2_img.path), None)
+                    if img_id is None:
+                        continue
+
                     for annotation_data in data["annotations"]:
+                        if annotation_data["image_id"] != img_id:
+                            continue
 
-                        if annotation_data["image_id"] == img_id:
-                            if annotation_data["type"] == "pose":
-                                if len(annotation_data["keypoints"]) == 0:
-                                    continue
-                                
-                                self.temp_keypoints = annotation_data["keypoints"] 
-                                
-                                move_pose_point = True
-                                move_top_left = False
-                                move_top_right = False
-                                move_bottom_left = False
-                                move_bottom_right = False
+                        if annotation_data["type"] == "pose":
+                            if len(annotation_data["keypoints"]) == 0:
+                                continue
 
-                                for keypoint in self.temp_keypoints:
-                                    if keypoint[1][0] - 5 < x < keypoint[1][0] + 5 and keypoint[1][1] - 5 < y < keypoint[1][1] + 5:
-                         
-                                        self.keypoint_type = keypoint[0]
-                                        self.keypoint_value = keypoint[1] 
-                                        
-                                        self.annotation_manager.id = annotation_data["id"]
-                                        breakout = True
-                                        break
-                                    else:
-                                        self.keypoint_type = None
-                                        self.keypoint_value = None
-                                
+                            self.temp_keypoints = annotation_data["keypoints"]
+                            for keypoint in self.temp_keypoints:
+                                if abs(keypoint[1][0] - x) < 7.5 and abs(keypoint[1][1] - y) < 7.5:
+                                    self.keypoint_type = keypoint[0]
+                                    self.keypoint_value = keypoint[1]
+                                    self.annotation_manager.id = annotation_data["id"]
+                                    move_pose_point = True
+                                    move_top_left = move_top_right = move_bottom_left = move_bottom_right = False
+                                    breakout = True
+                                    break
                             else:
-                        
-                                top_left_coord = (annotation_data["bbox"][0], annotation_data["bbox"][1])
-                                top_right_coord = (annotation_data["bbox"][2], annotation_data["bbox"][1])
-                                bottom_left_coord = (annotation_data["bbox"][0], annotation_data["bbox"][3])
-                                bottom_right_coord = (annotation_data["bbox"][2], annotation_data["bbox"][3])
-                                if top_left_coord[0] - self.corner_size < x < top_left_coord[0] + self.corner_size and top_left_coord[1] - self.corner_size < y < top_left_coord[1] + self.corner_size:
-                                    self.annotation_manager.id = annotation_data["id"]
-                                    move_top_left = True
-                                    move_top_right = False
-                                    move_bottom_left = False
-                                    move_bottom_right = False
-                                    move_pose_point = False
-                    
-                                    breakout = True
-                                    break
-                                
-                                elif top_right_coord[0] - self.corner_size < x < top_right_coord[0] + self.corner_size and top_right_coord[1] - self.corner_size < y < top_right_coord[1] + self.corner_size:
-                                    self.annotation_manager.id = annotation_data["id"]
-                                    move_top_left = False
-                                    move_top_right = True
-                                    move_bottom_left = False
-                                    move_bottom_right = False
-                                    move_pose_point = False
-                                    breakout = True
-                                    break
+                                self.keypoint_type = self.keypoint_value = None
+                                move_pose_point = False
+                        else:
+                            corners = {
+                                "top_left": (annotation_data["bbox"][0], annotation_data["bbox"][1]),
+                                "top_right": (annotation_data["bbox"][2], annotation_data["bbox"][1]),
+                                "bottom_left": (annotation_data["bbox"][0], annotation_data["bbox"][3]),
+                                "bottom_right": (annotation_data["bbox"][2], annotation_data["bbox"][3])
+                            }
 
-                                elif bottom_left_coord[0] - self.corner_size < x < bottom_left_coord[0] + self.corner_size and bottom_left_coord[1] - self.corner_size < y < bottom_left_coord[1] + self.corner_size:
+                            for corner, coord in corners.items():
+                                if abs(coord[0] - x) < self.corner_size and abs(coord[1] - y) < self.corner_size:
                                     self.annotation_manager.id = annotation_data["id"]
-                                
-                                    move_top_left = False
-                                    move_top_right = False
-                                    move_bottom_left = True
-                                    move_bottom_right = False
+                                    move_top_left = corner == "top_left"
+                                    move_top_right = corner == "top_right"
+                                    move_bottom_left = corner == "bottom_left"
+                                    move_bottom_right = corner == "bottom_right"
                                     move_pose_point = False
+                                    self.temp_bbox_coords = annotation_data["bbox"]
                                     breakout = True
                                     break
+                            else:
+                                move_top_left = move_top_right = move_bottom_left = move_bottom_right = move_pose_point = False
 
-                                elif bottom_right_coord[0] - self.corner_size < x < bottom_right_coord[0] + self.corner_size and bottom_right_coord[1] - self.corner_size < y < bottom_right_coord[1] + self.corner_size:
-                                    self.annotation_manager.id = annotation_data["id"]
-                                    move_top_left = False
-                                    move_top_right = False
-                                    move_bottom_left = False
-                                    move_bottom_right = True
-                                    move_pose_point = False
-                                    breakout = True
-                                    break
-                                else:
-                                    move_top_left = False
-                                    move_top_right = False
-                                    move_bottom_left = False
-                                    move_bottom_right = False
-                                    move_pose_point = False
-                                    
+                moved = False
                 self.click_count += 1
 
-
-         
         elif event == cv2.EVENT_LBUTTONUP:
             self.click_count = 0
-
-            if move_pose_point:
-                for i, keypoint in enumerate(self.temp_keypoints):
-                    if keypoint[0] == self.keypoint_type and keypoint[1] == self.keypoint_value:
-                        
-                        self.temp_keypoints[i][1] = (x, y)
-                info = {
-                    "images": {
-                    "id": self.img_id,
-                    "file_name": self.cv2_img.path,
-                    "image_height": self.cv2_img.height,
-                    "image_width": self.cv2_img.width
-                    },
-                    "annotation": {
-                        "id": self.annotation_manager.id,
-                        "keypoints": self.temp_keypoints,
-                        "image_id":self.img_id,
-                        "object_id":self.object_id,
-                        "iscrowd": 0,
-                        "type": "pose",
-                        "conf": 1,
-                        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        
-                    }
-                }
-        
-                self.annotation_manager.save_to_json(info, "pose")
-                self.drawing_annotations()
-                self.show_image()
-            elif move_top_left:
-                top_left_x, top_left_y = x, y 
-                bottom_right_x, bottom_right_y = self.temp_bbox_coords[2], self.temp_bbox_coords[3]
-                top_left_x, top_left_y = max(0, min(top_left_x, self.cv2_img.width)), max(0, min(top_left_y, self.cv2_img.height))
+            if moved:
            
-
-                if top_left_x > bottom_right_x:
-       
-                    bottom_right_x, top_left_x = top_left_x, bottom_right_x
-
-                if top_left_y > bottom_right_y:
-                    bottom_right_y, top_left_y = top_left_y, bottom_right_y
-
-                info = {
-                    "images": {
-                    "id": self.img_id,
-                    "file_name": self.cv2_img.path,
-                    "image_height": self.cv2_img.height,
-                    "image_width": self.cv2_img.width
-                    },
-                    "annotation": {
-                        "id": self.annotation_manager.id,
-                        "bbox": [top_left_x, top_left_y, bottom_right_x, bottom_right_y],
-                        "image_id":self.img_id,
-                        "object_id":self.object_id,
-                        "iscrowd": 0,
-                        "area": (bottom_right_x - top_left_x) * (bottom_right_y - top_left_y),
-                        "type": self.bbox_type + " " + "bounding_box",
-                        "is_hidden": self.is_hidden,
-                        "conf": 1,
-                        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        
+                if move_pose_point:
+                    for i, keypoint in enumerate(self.temp_keypoints):
+                        if keypoint[0] == self.keypoint_type and keypoint[1] == self.keypoint_value:
+                            self.temp_keypoints[i][1] = (x, y)
+                    info = {
+                        "images": {
+                            "id": self.img_id,
+                            "file_name": self.cv2_img.path,
+                            "image_height": self.cv2_img.height,
+                            "image_width": self.cv2_img.width
+                        },
+                        "annotation": {
+                            "id": self.annotation_manager.id,
+                            "keypoints": self.temp_keypoints,
+                            "image_id": self.img_id,
+                            "object_id": self.object_id,
+                            "iscrowd": 0,
+                            "type": "pose",
+                            "conf": 1,
+                            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        }
                     }
-                }
-            
-        
-                cv2.rectangle(self.cv2_img.get_image(), (top_left_x, top_left_y), (bottom_right_x, bottom_right_y), self.annotation_colors[self.object_id], 2)
-                self.annotation_manager.save_to_json(info, "bbox")
-                self.drawing_annotations()
-                self.show_image()
-            elif move_top_right:
-                top_left_x, top_left_y = self.temp_bbox_coords[0], y 
-                bottom_right_x, bottom_right_y = x, self.temp_bbox_coords[3]
-                top_left_x, top_left_y = max(0, min(top_left_x, self.cv2_img.width)), max(0, min(top_left_y, self.cv2_img.height))
-           
-
-                if top_left_x >  bottom_right_x:
-       
-                     bottom_right_x, top_left_x = top_left_x,  bottom_right_x
-
-                if top_left_y > bottom_right_y:
-                    bottom_right_y, top_left_y = top_left_y, bottom_right_y
-
-                info = {
-                    "images": {
-                    "id": self.img_id,
-                    "file_name": self.cv2_img.path,
-                    "image_height": self.cv2_img.height,
-                    "image_width": self.cv2_img.width
-                    },
-                    "annotation": {
-                        "id": self.annotation_manager.id,
-                        "bbox": [top_left_x, top_left_y,  bottom_right_x, bottom_right_y],
-                        "image_id":self.img_id,
-                        "object_id":self.object_id,
-                        "iscrowd": 0,
-                        "area": (bottom_right_x - top_left_x) * (bottom_right_y - top_left_y),
-                        "type": self.bbox_type + " " + "bounding_box",
-                        "is_hidden": self.is_hidden,
-                        "conf": 1,
-                        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        
-                    }
-                }
-            
-        
-                cv2.rectangle(self.cv2_img.get_image(), (top_left_x, top_left_y), ( bottom_right_x, bottom_right_y), self.annotation_colors[self.object_id], 2)
-         
-                self.annotation_manager.save_to_json(info, "bbox")
-                self.drawing_annotations()
-                self.show_image()
-
-            elif move_bottom_left:
+                    self.annotation_manager.save_to_json(info, "pose")
+                    self.drawing_annotations()
+                    self.show_image()
+                else:
                 
+                    if self.temp_bbox_coords != None:
 
-                top_left_x, top_left_y = x, self.temp_bbox_coords[1]
-                bottom_right_x, bottom_right_y = self.temp_bbox_coords[2], y
-                #top_left_x, top_left_y = max(0, min(top_left_x, self.cv2_img.width)), max(0, min(top_left_y, self.cv2_img.height))
-                if top_left_x >  bottom_right_x:
-       
-                     bottom_right_x, top_left_x = top_left_x,  bottom_right_x
+                        x1, y1, x2, y2 = self.temp_bbox_coords
+                        if move_top_left:
+                            x1, y1 = x, y
+                        elif move_top_right:
+                            x2, y1 = x, y
+                        elif move_bottom_left:
+                            x1, y2 = x, y
+                        elif move_bottom_right:
+                            x2, y2 = x, y
 
-                if top_left_y > bottom_right_y:
-                    bottom_right_y, top_left_y = top_left_y, bottom_right_y
+                        x1, y1 = max(0, min(x1, self.cv2_img.width)), max(0, min(y1, self.cv2_img.height))
+                        x2, y2 = max(0, min(x2, self.cv2_img.width)), max(0, min(y2, self.cv2_img.height))
 
-                info = {
-                    "images": {
-                    "id": self.img_id,
-                    "file_name": self.cv2_img.path,
-                    "image_height": self.cv2_img.height,
-                    "image_width": self.cv2_img.width
-                    },
-                    "annotation": {
-                        "id": self.annotation_manager.id,
-                        "bbox": [top_left_x, top_left_y,  bottom_right_x, bottom_right_y],
-                        "image_id":self.img_id,
-                        "object_id":self.object_id,
-                        "iscrowd": 0,
-                        "area": (bottom_right_x - top_left_x) * (bottom_right_y - top_left_y),
-                        "type": self.bbox_type + " " + "bounding_box",
-                        "is_hidden": self.is_hidden,
-                        "conf": 1,
-                        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        
-                    }
-                }
-            
-        
-                cv2.rectangle(self.cv2_img.get_image(), (top_left_x, top_left_y), ( bottom_right_x, bottom_right_y), self.annotation_colors[self.object_id], 2)
-         
-                self.annotation_manager.save_to_json(info, "bbox")
-                self.drawing_annotations()
-                self.show_image()
+                        if x1 > x2:
+                            x1, x2 = x2, x1
+                        if y1 > y2:
+                            y1, y2 = y2, y1
 
-            elif move_bottom_right:
-                top_left_x, top_left_y = self.temp_bbox_coords[0], self.temp_bbox_coords[1]
+                        info = {
+                            "images": {
+                                "id": self.img_id,
+                                "efile_name": self.cv2_img.path,
+                                "image_height": self.cv2_img.height,
+                                "image_width": self.cv2_img.width
+                            },
+                            "annotation": {
+                                "id": self.annotation_manager.id,
+                                "bbox": [x1, y1, x2, y2],
+                                "image_id": self.img_id,
+                                "object_id": self.object_id,
+                                "iscrowd": 0,
+                                "area": (x2 - x1) * (y2 - y1),
+                                "type": self.bbox_type + " bounding_box",
+                                "is_hidden": self.is_hidden,
+                                "conf": 1,
+                                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            }
+                        }
                 
-                bottom_right_x, bottom_right_y = x, y
-
-               # top_left_x, top_left_y = max(0, min(top_left_x, self.cv2_img.width)), max(0, min(top_left_y, self.cv2_img.height))
-                if top_left_x >  bottom_right_x:
-       
-                    bottom_right_x, top_left_x = top_left_x,  bottom_right_x
-
-                if top_left_y > bottom_right_y:
-                    bottom_right_y, top_left_y = top_left_y, bottom_right_y
-
-                info = {
-                    "images": {
-                    "id": self.img_id,
-                    "file_name": self.cv2_img.path,
-                    "image_height": self.cv2_img.height,
-                    "image_width": self.cv2_img.width
-                    },
-                    "annotation": {
-                        "id": self.annotation_manager.id,
-                        "bbox": [top_left_x, top_left_y,  bottom_right_x, bottom_right_y],
-                        "image_id":self.img_id,
-                        "object_id":self.object_id,
-                        "iscrowd": 0,
-                        "area": (bottom_right_x - top_left_x) * (bottom_right_y - top_left_y),
-                        "type": self.bbox_type + " " + "bounding_box",
-                        "is_hidden": self.is_hidden,
-                        "conf": 1,
-                        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        
-                    }
-                }
-            
-        
-                cv2.rectangle(self.cv2_img.get_image(), (top_left_x, top_left_y), (bottom_right_x, bottom_right_y), self.annotation_colors[self.object_id], 2)
-         
-                self.annotation_manager.save_to_json(info, "bbox")
-                self.drawing_annotations()
-                self.show_image()
+                        cv2.rectangle(self.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.object_id], 2)
+                        self.annotation_manager.save_to_json(info, "bbox")
                 
+                        self.drawing_annotations()
+                        self.show_image()
 
-        
         elif self.click_count == 1:
-        
-
-        
-            if move_top_left or move_top_right or move_bottom_left or move_bottom_right or move_pose_point: 
+            moved = True
+            if move_top_left or move_top_right or move_bottom_left or move_bottom_right or move_pose_point:
                 self.cv2_img.set_image()
                 for annotation_file in self.annotation_files:
                     with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
                         data = json.load(f)
-            
 
                     for i, annotation_data in enumerate(data["annotations"]):
-                    
                         if annotation_data["id"] == self.annotation_manager.id:
                             self.img_id = annotation_data["image_id"]
                             self.object_id = annotation_data["object_id"]
                             self.annotation_manager.id = annotation_data["id"]
+
                             if annotation_data["type"] == "pose":
                                 self.temp_keypoints = annotation_data["keypoints"]
-               
-
-                                file_to_dump = annotation_file
-                                del data["annotations"][i]
-                                with open(self.video_manager.video_dir + "\\" + file_to_dump, 'w') as f:
-                                    json.dump(data, f, indent=4)
-                                break
                             else:
                                 self.temp_bbox_coords = annotation_data["bbox"]
                                 self.bbox_type = annotation_data["type"].split()[0]
                                 if self.bbox_type == "detected":
                                     self.bbox_type = "normal"
                                 self.is_hidden = annotation_data["is_hidden"]
-                                file_to_dump = annotation_file
-                                del data["annotations"][i]
-                                with open(self.video_manager.video_dir + "\\" + file_to_dump, 'w') as f:
-                                    json.dump(data, f, indent=4)
-                                break
-          
+
+                            file_to_dump = annotation_file
+                            del data["annotations"][i]
+                            with open(self.video_manager.video_dir + "\\" + file_to_dump, 'w') as f:
+                                json.dump(data, f, indent=4)
+                            break
+
                 self.drawing_annotations()
-   
-                if move_pose_point: 
+
+                if move_pose_point:
                     for keypoint in self.temp_keypoints:
                         if keypoint[0] != self.keypoint_type or keypoint[1] != self.keypoint_value:
                             cv2.circle(self.cv2_img.get_image(), (keypoint[1][0], keypoint[1][1]), 5, self.annotation_colors[self.object_id], -1)
                             cv2.putText(self.cv2_img.get_image(), keypoint[0].capitalize(), (keypoint[1][0], keypoint[1][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale - 0.25, self.font_color, self.font_thickness)
-                    if self.keypoint_type != None and self.keypoint_value != None:
+                    if self.keypoint_type is not None and self.keypoint_value is not None:
                         cv2.circle(self.cv2_img.get_image(), (x, y), 5, self.annotation_colors[self.object_id], -1)
                         cv2.putText(self.cv2_img.get_image(), self.keypoint_type.capitalize(), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale - 0.25, self.font_color, self.font_thickness)
-
-                elif move_top_left:
-                    x1, y1 = x, y  # Top-left corner of the main rectangle
-                    x2, y2 = self.temp_bbox_coords[2], self.temp_bbox_coords[3]  # Bottom-right corner of the main rectangle
-
-                    # Calculate corner rectangles
-                
-
-                    corner_points = [(x1, y1), (x2, y1), (x1, y2), (x2, y2)]
-
-                    # Draw rectangles for each corner
-                    for corner_x, corner_y in corner_points:
-                        cv2.rectangle(self.cv2_img.get_image(), (corner_x - self.corner_size//2 , corner_y - self.corner_size//2), (corner_x + self.corner_size//2, corner_y + self.corner_size//2), self.annotation_colors[self.object_id], 2)
-                        cv2.rectangle(self.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.object_id], 2)
-
-
-
-                    
-                    temp_x = self.temp_bbox_coords[2] if self.temp_bbox_coords[2] > x else x 
-                    temp_y = self.temp_bbox_coords[3] if self.temp_bbox_coords[3] > y else y 
-               
-                    cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
-
-                elif move_top_right:
-                    x1, y1 = self.temp_bbox_coords[0], y  # Top-left corner of the main rectangle
-                    x2, y2 = x, self.temp_bbox_coords[3]  # Bottom-right corner of the main rectangle
-
-                    # Calculate corner rectangles
-
+                else:
+                    x1, y1, x2, y2 = self.temp_bbox_coords
+                    if move_top_left:
+                        x1, y1 = x, y
+                    elif move_top_right:
+                        x2, y1 = x, y
+                    elif move_bottom_left:
+                        x1, y2 = x, y
+                    elif move_bottom_right:
+                        x2, y2 = x, y
 
                     corner_points = [(x1, y1), (x2, y1), (x1, y2), (x2, y2)]
-
-                    # Draw rectangles for each corner
                     for corner_x, corner_y in corner_points:
-                        cv2.rectangle(self.cv2_img.get_image(), (corner_x - self.corner_size//2 , corner_y - self.corner_size//2), (corner_x + self.corner_size//2, corner_y + self.corner_size//2), self.annotation_colors[self.object_id], 2)
-                        cv2.rectangle(self.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.object_id], 2)
-
-                    # cv2.rectangle(self.cv2_img.get_image(), (self.temp_bbox_coords[0], y), (x, self.temp_bbox_coords[3]), self.annotation_colors[self.object_id], 2)
-
-                
-                    
-                    temp_x = x2 if x2 > x1 else x1 
-                    temp_y = y2 if y2 > y1 else y1 
-                    
+                        cv2.rectangle(self.cv2_img.get_image(), (corner_x - self.corner_size // 2, corner_y - self.corner_size // 2), (corner_x + self.corner_size // 2, corner_y + self.corner_size // 2), self.annotation_colors[self.object_id], 2)
+                    cv2.rectangle(self.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.object_id], 2)
+                    temp_x = max(x1, x2)
+                    temp_y = max(y1, y2)
                     cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
-
-                elif move_bottom_left:
-                    x1, y1 = x, self.temp_bbox_coords[1]
-                    x2, y2 = self.temp_bbox_coords[2], y
-
-
-                    corner_points = [(x1, y1), (x2, y1), (x1, y2), (x2, y2)]
-
-                    # Draw rectangles for each corner
-                    for corner_x, corner_y in corner_points:
-                        cv2.rectangle(self.cv2_img.get_image(), (corner_x - self.corner_size//2 , corner_y - self.corner_size//2), (corner_x + self.corner_size//2, corner_y + self.corner_size//2), self.annotation_colors[self.object_id], 2)
-                        cv2.rectangle(self.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.object_id], 2)
-
-                    temp_x = x2 if x2 > x1 else x1 
-                    temp_y = y2 if y2 > y1 else y1 
-                    
-                    cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
-
-
-                elif move_bottom_right:
-                    x1, y1 = self.temp_bbox_coords[0], self.temp_bbox_coords[1]
-                    x2, y2 = x, y
-                    corner_points = [(x1, y1), (x2, y1), (x1, y2), (x2, y2)]
-
-                    # Draw rectangles for each corner
-                    for corner_x, corner_y in corner_points:
-                        cv2.rectangle(self.cv2_img.get_image(), (corner_x - self.corner_size//2 , corner_y - self.corner_size//2), (corner_x + self.corner_size//2, corner_y + self.corner_size//2), self.annotation_colors[self.object_id], 2)
-                        cv2.rectangle(self.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.object_id], 2)
-
-                    temp_x = x2 if x2 > x1 else x1 
-                    temp_y = y2 if y2 > y1 else y1 
-                    
-                    cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
-
 
                 self.show_image()
-    
+
+
+        
 
     def drawing_bbox(self, event, x, y, flags, param):
         global start_x, start_y, end_x, end_y
@@ -717,6 +493,7 @@ class AnnotationTool():
             self.show_image()
             
         if event == cv2.EVENT_LBUTTONDOWN:
+            self.redo_stack = []
             if self.click_count == 0:
             
                 start_x = max(0, min(x, self.cv2_img.width))  
@@ -794,6 +571,7 @@ class AnnotationTool():
             data = json.load(f)
 
         if event == cv2.EVENT_LBUTTONDOWN:
+            self.redo_stack = []
             point = (x, y)
             cv2.circle(self.cv2_img.get_image(), (point[0], point[1]), 5, self.annotation_colors[self.object_id], -1)
 
@@ -809,7 +587,7 @@ class AnnotationTool():
                 json.dump(data, f, indent = 4)
        
             self.drawing_annotations()
-            #self.text_to_write = self.pose_type.capitalize()
+           
             self.show_image()
 
 
@@ -932,7 +710,7 @@ class AnnotationTool():
                                 "type": annotation_data["type"],
                                 "is_hidden": annotation_data["is_hidden"],
                                 "conf": 1,
-                                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                "time": (datetime.now() - timedelta(seconds=1)).strftime("%Y-%m-%d %H:%M:%S")
                             }
                             
 
@@ -946,7 +724,7 @@ class AnnotationTool():
                                 "iscrowd": annotation_data["iscrowd"],
                                 "type": annotation_data["type"],
                                 "conf": 1,
-                                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                "time": (datetime.now() - timedelta(seconds=1)).strftime("%Y-%m-%d %H:%M:%S")
                             }
                             if info:
                                 info_copy = copy.deepcopy(info)
@@ -1139,6 +917,7 @@ class AnnotationTool():
 
                    
                 elif key == 13 or self.pyqtwindow.button_states["next image"]:
+                    self.redo_stack = []
                     if self.pyqtwindow.button_states["next image"]: # enter; next image in dataset  
                         self.pyqtwindow.button_states["next image"] = False
                         
@@ -1153,6 +932,7 @@ class AnnotationTool():
                     return
 
                 elif key == 8 or self.pyqtwindow.button_states["previous image"]:
+                    self.redo_stack = []
                     if self.pyqtwindow.button_states["previous image"]:
                         self.pyqtwindow.button_states["previous image"] = False # backspace; prev_img 
                     self.show_image()
@@ -1166,6 +946,10 @@ class AnnotationTool():
                     for annotation_file in self.annotation_files:
                         with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
                             data = json.load(f)
+                        
+                            for annotation in data["annotations"]:
+                                if annotation["image_id"] == self.img_id:
+                                    self.redo_stack.append(annotation)
                         data["annotations"] = [annotation for annotation in data["annotations"] if annotation["image_id"] != self.img_id]
             
                         with open(self.video_manager.video_dir + "\\" + annotation_file, 'w') as f:
@@ -1177,8 +961,42 @@ class AnnotationTool():
                     cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
                     self.bbox_mode = False
                     self.pose_mode = False
+                    self.editing_mode = False
                     self.object_id = 1
 
+                elif key == 89 or self.pyqtwindow.button_states["redo"]: # no code for ctrl + y, pressing "y" == 86; redo
+                    if self.pyqtwindow.button_states["redo"]:
+                        self.pyqtwindow.button_states["redo"] = False
+                    
+                    if self.redo_stack:
+                        info = self.redo_stack.pop()
+                        
+                        if 'type' in info.keys():
+                        
+                            info["time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                            with open(self.video_manager.video_dir + "\\" + "bbox_annotations.json", 'r') as f:
+                                data = json.load(f)
+                            
+                            data["annotations"].append(info)
+                            with open(self.video_manager.video_dir + "\\" + "bbox_annotations.json", 'w') as f:
+                                json.dump(data, f, indent=4)
+
+                        else:
+                            with open(self.video_manager.video_dir + "\\" + "pose_annotations.json", 'r') as f:
+                                data = json.load(f)
+
+                            for i in range(len(data["annotations"])):
+                                if data["annotations"][i]["id"] == info["id"]:
+
+                                    data["annotations"][i]["keypoints"].append((info['pos'], info['coords']))
+                            
+                  
+                            with open(self.video_manager.video_dir + "\\" + "pose_annotations.json", 'w') as f:
+                                json.dump(data, f, indent=4)
+
+                        self.drawing_annotations()
+                        self.show_image()
+                   
                 elif key == 26 or self.pyqtwindow.button_states["undo"]: # ctrl + z; undo
                     if self.pyqtwindow.button_states["undo"]:
                         self.pyqtwindow.button_states["undo"] = False
@@ -1224,14 +1042,19 @@ class AnnotationTool():
                                 self.object_id = data["annotations"][i]["object_id"]
                                 if data["annotations"][i]["type"] == "pose":
                                     if len(data["annotations"][i]["keypoints"]) != 0:
-                                        data["annotations"][i]["keypoints"].pop()
+                                        keypoints_pop = data["annotations"][i]["keypoints"].pop()
+                                        temp = {'pos': None,
+                                                'coords': None,
+                                                'id': None}
+                                        
+                                        self.redo_stack.append({'pos': keypoints_pop[0], 'coords': keypoints_pop[1], 'id': data['annotations'][i]['id']})
                                         break
                                     else:
-                                        
+                                        self.redo_stack.append(data["annotations"][i])
                                         del data["annotations"][i]
                                         break
                                 else:
-                
+                                    self.redo_stack.append(data["annotations"][i])
                                     del data["annotations"][i]
                                 break
                         
@@ -1259,7 +1082,7 @@ class AnnotationTool():
                     self.drawing_annotations()
                     self.text_to_write = mode_text
                     self.show_image()
-                    
+                 
                 elif key == ord('n') or self.pyqtwindow.button_states["increment id"]: # next mouse ID
                     if self.pyqtwindow.button_states["increment id"]:
                         self.pyqtwindow.button_states["increment id"] = False
@@ -1319,9 +1142,6 @@ class AnnotationTool():
                             cv2.setMouseCallback(self.cv2_img.name, self.drawing_pose)
                 
 
-
-        
-     
 
     def run_tool(self):
       

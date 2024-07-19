@@ -9,12 +9,8 @@ import sys
 from tkinter import Tk, filedialog, messagebox
 import warnings 
 
-
-
 from PyQtWindow import *
 from annotation_labeler import *
-
-
 
 
 class ModelManager:
@@ -43,8 +39,8 @@ class ModelManager:
         label_train_path.mkdir(parents=True, exist_ok=True)
         label_val_path.mkdir(parents=True, exist_ok=True)
 
-
-        root = Tk()
+        # intializing tkinter for file dialog
+        root = Tk() 
         root.attributes('-topmost', True)
         root.withdraw()
 
@@ -81,8 +77,7 @@ class ModelManager:
 
             if not os.path.exists(os.path.join(video_path, "pose_annotations.json")):
                 warnings.warn(f"There are no pose annotations made for {video_path}")
-            # assert os.path.exists(os.path.join(video_path, "bbox_annotations.json")), \
-            #     f"There are no annotations made for {video_path}"
+           
             
             with open(video_path + "/bbox_annotations.json", 'r') as f:
                 data = json.load(f)
@@ -125,12 +120,15 @@ class ModelManager:
         files = [entry for entry in all_entries if entry.is_file()]
         num_of_files = len(files)
 
-        
+        # start model training with specific parameters
         self.model.train(data="annotation_labeler.yaml", epochs = 100, patience=15, degrees=30, shear = 30)
         print("Model has finished training, use the new model weights and run the program again.")
         sys.exit()
    
     def predicting(self):
+        """
+        Predict bounding boxes for the given image and save annotations
+        """
         
         bbox_values = self.model.predict(self.img_path, conf=self.conf_threshold)[0].boxes
         num_of_objects = len(bbox_values.conf)
