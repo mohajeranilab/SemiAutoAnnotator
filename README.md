@@ -19,11 +19,11 @@ The user will start annotating images and will be assisted by a model that provi
     pip install -r requirements.txt
 
 ## Usage
-Run the annotation_labeler.py file, two optional arguments can be passed,
+Run the annotation_labeler.py file, three optional arguments can be passed,
 ```bash
---frame_skip= (default: 50) --model_path= (default: None)
+--frame_skip= (default: 50) --model_path= (default: None) --clustering=(default: False)
 ``` 
-It is necessary to specify a path to the model/weights file if you want the assistance of a model. Aftewards, the program will give you a file explorer window to select the video file you want to annotate (it will extract frames for you).
+It is NECESSARY to specify a path to the model/weights file if you want the assistance of a model AND make use of the clustering. Aftewards, the program will give you a file explorer window to select the video file you want to annotate (it will extract frames for you).
 
 
 "In the 'used_videos/' directory, a folder will be created for each selected video, containing the video file itself along with subfolders for extracted frames and JSON annotations. The structure will look like this:
