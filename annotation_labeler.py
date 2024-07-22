@@ -1145,12 +1145,13 @@ class AnnotationTool():
 
     def run_tool(self):
       
-        app = QApplication(sys.argv) #
+        app = QApplication(sys.argv) 
         
         self.model_manager = ModelManager()
         parser = argparse.ArgumentParser()
         parser.add_argument("--frame_skip", type=int, default=50, help="Number of frames to skip")
-        parser.add_argument("--model_path", type=str, default=None, help="Path to the model/weights file ")
+        parser.add_argument("--model_path", type=str, default=None, help="Path to the model/weights file")
+        parser.add_argument("--clustering", type=bool, default=False, help="True/False to turn on/off clustering of chosen dataset")
         args = parser.parse_args()
         self.frame_skip = args.frame_skip
        
@@ -1165,7 +1166,8 @@ class AnnotationTool():
         width, height = screen.width, screen.height
         self.screen_center_x = int((width - 700) / 2)
         self.screen_center_y = int((height - 500)/ 2)
-        # creating a list of random annotation colors that are- the same throughout different runs 
+
+        # creating a list of random annotation colors that are the same throughout different runs 
         seed = 41
         random.seed(seed)
         for _ in range(30):
@@ -1210,14 +1212,14 @@ class AnnotationTool():
             self.model_manager.model.to(device)
             self.model_detecting = "On"
 
-            # comment the below code to turn off/on clustering 
-
-            # initialize_clustering(Path(self.image_dir), self.model_manager.model_path)
-            # dir_list = os.listdir("used_videos/" + video_name.split(".")[0] + "/clusters/")
-            # for i, dir in enumerate(dir_list):
-            #     dir_list[i] = "used_videos/" + video_name.split(".")[0] + "/clusters/" + dir + "/" 
-            # # delete extracted_frames to save space
-            # shutil.rmtree(self.image_dir, ignore_errors=True)
+            #comment the below code to turn off/on clustering 
+            if args.clustering:
+                initialize_clustering(Path(self.image_dir), self.model_manager.model_path)
+                dir_list = os.listdir("used_videos/" + video_name.split(".")[0] + "/clusters/")
+                for i, dir in enumerate(dir_list):
+                    dir_list[i] = "used_videos/" + video_name.split(".")[0] + "/clusters/" + dir + "/" 
+                # delete extracted_frames to save space
+                shutil.rmtree(self.image_dir, ignore_errors=True)
         else:
             dir_list = None
             self.model_detecting = "Off"
@@ -1234,8 +1236,8 @@ class AnnotationTool():
                 self.annotations_exists = True
                 break
 
-        result = "no"
         # Create a window pop up to determine if user wants to continue where they left off 
+        result = "no"
         if self.annotations_exists:
             window = Tk()
             window.attributes('-topmost', True)
@@ -1301,20 +1303,16 @@ class AnnotationTool():
             self.img_num = 0  # reset img_num for the next directory    
          
         cv2.destroyAllWindows()
-        sys.exit(app.exec_()) # 
+        sys.exit(app.exec_()) 
 
 
 
 if __name__ == "__main__":
-
-
-     # Initialize PyQt application and window
-    app = QApplication(sys.argv) #
-
+  
+    app = QApplication(sys.argv) 
 
     tool = AnnotationTool()
 
-    
     tool.run_tool()
 
   
