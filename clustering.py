@@ -12,8 +12,6 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import davies_bouldin_score
 import os 
 import shutil
-from sklearn.metrics import pairwise_distances_argmin_min
-from sklearn.metrics.pairwise import pairwise_distances
 from tkinter import filedialog
 from scipy.spatial import ConvexHull
 import sys
@@ -21,6 +19,15 @@ from tqdm import tqdm
 
  
 def preprocess_image(img_path):
+    """
+    Preprocess the image for model input
+
+    Params:
+        img_path (str): path to image
+
+    Returns:
+        torch.Tensor: Preprocessed image tensor
+    """
     transform = transforms.Compose([
         transforms.Resize((640, 640)),
         transforms.Grayscale(num_output_channels=3), 
@@ -37,12 +44,29 @@ def preprocess_image(img_path):
 
 
 def hook_fn(module, input, output):
+    """
+    Hook function to capture intermediate features from a specified layer
+
+    Parameters:
+        module (torch.nn.Module): the layer module
+        input (tuple): input to the layer
+        output (torch.Tensor): output from the layer
+    """
+
     intermediate_features.append(output)
 
 
 def extract_features(model, img, layer_index): 
     """
-    Extractes features from certain layer in model 
+    Extract features from a specified layer in the model
+    
+    Parameters:
+        model (torch.nn.Module): the model from which to extract features
+        img (torch.Tensor): the input image tensor
+        layer_index (int): index of the layer to extract features from
+    
+    Returns:
+        torch.Tensor or None: The extracted features or None if no features were extracted.
     """
 
     global intermediate_features
@@ -61,9 +85,23 @@ def extract_features(model, img, layer_index):
     
 
 def create_features_list(model, image_paths, layer_index, sample_percentage):  
+    """
+    Create a dictionary of image features extracted from a specified layer of the model
+    
+    Parameters:
+        model (torch.nn.Module): the model from which to extract features
+        image_paths (list): list of paths to the images
+        layer_index (int): index of the layer to extract features from
+        sample_percentage (float): percentage of images to sample for feature extraction
+    
+    Returns:
+        features_dict (dict_): a dictionary where keys are image file names and values are flattened feature arrays
+    """
+
     features_dict = {}
 
     random.shuffle(image_paths)
+    print(image_paths)
     selected_paths = image_paths[:int(len(image_paths) * sample_percentage)]
     for i in tqdm(range(len(selected_paths))):
         original_stdout = sys.stdout
@@ -71,7 +109,7 @@ def create_features_list(model, image_paths, layer_index, sample_percentage):
 # Redirect stdout to /dev/null or equivalent
         sys.stdout = open(os.devnull, 'w')
         img_path =  selected_paths[i]
- 
+        print(img_path, "img)path")
         img = preprocess_image(img_path)
     
         features = extract_features(model, img, layer_index)
@@ -88,7 +126,10 @@ def create_features_list(model, image_paths, layer_index, sample_percentage):
 
 def plot_features_space(features_dict):
     """
-    Plots featured space flattened to 2D space 
+    Plot the feature space flattened to 2D space
+    
+    Parameters:
+        features_dict (dict): a dictionary where keys are image file names and values are feature arrays
     """
     X_values = np.array(list(features_dict.values())) 
 
@@ -108,8 +149,16 @@ def plot_features_space(features_dict):
 
 def applying_tsne(features, perplexity):
     """
-    Applying t-SNE algorithm to featured data, transforming into a 2D space 
+    Apply t-SNE algorithm to feature data, transforming it into a 2D space
+    
+    Parameters:
+        features (dict): A dictionary where keys are image file names and values are feature arrays
+        perplexity (int): The perplexity parameter for t-SNE
+    
+    Returns:
+        np.ndarray: A numpy array with image file names and their corresponding 2D t-SNE coordinates
     """
+
     X_values = np.array(list(features.values())) 
 
     if len(X_values) == 0:
@@ -127,7 +176,10 @@ def applying_tsne(features, perplexity):
 
 def plot_reduced_feature_space(features_tsne):
     """
-    Plotting the feature space after t-SNE has been applied
+    Plot the feature space after t-SNE has been applied.
+    
+    Params:
+        features_tsne (np.ndarray): A numpy array with image file names and their corresponding 2D t-SNE coordinates.
     """
 
     coordinates_tsne = features_tsne[:, 1:].astype(float)
@@ -138,8 +190,14 @@ def plot_reduced_feature_space(features_tsne):
     plt.show()
 
 
-def cluster_and_plot(features_tsne, epsilon, min_samples, image_paths, image_dir):
+def cluster_and_plot(features_tsne, epsilon, min_samples, image_dir):
+    """
 
+    Params:
+        feautures_tsne:
+        epsilon (int):
+        min_samples (int): 
+    """
     coordinates_tsne = features_tsne[:, 1:].astype(float)
     db = DBSCAN(eps=epsilon, min_samples=min_samples).fit(coordinates_tsne)
     labels = db.labels_
@@ -210,6 +268,13 @@ def cluster_and_plot(features_tsne, epsilon, min_samples, image_paths, image_dir
 
 
 def export_features(features_dict, filename):
+    """
+    Export features to a .npy file.
+    
+    Parameters:
+        features_dict (dict): A dictionary where keys are image file names and values are feature arrays
+        filename (str): The name of the file to save the features
+    """
     np.save(filename, features_dict)
 
 
@@ -225,8 +290,7 @@ def initialize_clustering(image_dir, model_path):
     # INCORRECT_IMAGE_PATHS = sorted(INCORRECT_IMAGE_DIR.glob("*.png"))
     IMAGE_PATHS = sorted(image_dir.glob("*.jpg")) # change to *.jpg for jpg images
     PERPLEXITY = 10 * (len(IMAGE_PATHS))/1000
-    
-
+    print(IMAGE_PATHS)
 
     LAYER_INDEX = 21 # 21 is the last index before detection head, choosing highest layer for high level features 
     # 20 works and 22? 
@@ -250,7 +314,7 @@ def initialize_clustering(image_dir, model_path):
     MIN_SAMPLES = 10 # number of points clustered together for a region to be considered dense 
 
 
-    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    device = torch.device('cpu')
     model = YOLO(model_path)
     model.to(device)
 
@@ -270,47 +334,10 @@ def initialize_clustering(image_dir, model_path):
     cluster_centers = cluster_and_plot(features_tsne, EPSILON, MIN_SAMPLES, IMAGE_PATHS, image_dir)
 
     export_features(features, f"{image_dir.parent}/features_list.npy")
-    # incorrect_img_features = create_features_list(model, INCORRECT_IMAGE_PATHS, LAYER_INDEX, sample_percentage=0.15)
-    # print("Matching images to clusters.....")
-
-    # incorrect_features_tsne = applying_tsne(incorrect_img_features, PERPLEXITY)
     
-    # print(incorrect_features_tsne)
-    # print(cluster_centers)
-
-
-    # distances_to_clusters = pairwise_distances(incorrect_features_tsne[:, 1:], cluster_centers)
-
-
-    # farthest_cluster_indices = np.argmin(distances_to_clusters, axis=1)
-
-
-    # cluster_labels = [f"cluster_{idx}" for idx in farthest_cluster_indices]
-
-    # cluster_image_dict = {cluster_label: [] for cluster_label in set(cluster_labels)}
-
-
-    # for img_path, cluster_label in zip(INCORRECT_IMAGE_PATHS, cluster_labels):
-    #     cluster_image_dict[cluster_label].append(img_path)
-
-
-    # for cluster_label, image_paths in cluster_image_dict.items():
-    #     print(f"Images in {cluster_label}:")
-    #     for img_path in image_paths:
-    #         print(img_path.name)
-
-    # for cluster_label, image_paths in cluster_image_dict.items():
-    
-    #     fig, axes = plt.subplots(1, IMAGES_PER_CLUSTERS, figsize=(15, 3))
-    #     fig.suptitle(f"Images in {cluster_label}", fontsize=16)
-
-
-    #     for i in range(IMAGES_PER_CLUSTERS):
-    #         image = plt.imread(image_paths[i])
-    #         axes[i].imshow(image, cmap="gray")
-    #         axes[i].axis('off')
-    #         axes[i].set_title(image_paths[i].name)  # Set title as the image filename
-
-    #     plt.show()       
 if __name__ == "__main__":
-    main()
+    #image_dir = Path("used_videos\\f_2024_03_14_13_12_21_03\extracted_frames")
+    #model_path = "..\good.pt"
+    image_dir = ""
+    model_path = ""
+    initialize_clustering(image_dir, model_path)
