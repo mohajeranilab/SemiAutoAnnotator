@@ -192,12 +192,17 @@ def plot_reduced_feature_space(features_tsne):
 
 def cluster_and_plot(features_tsne, epsilon, min_samples, image_dir):
     """
-
-    Params:
-        feautures_tsne:
-        epsilon (int):
-        min_samples (int): 
-    """
+        Perform DBSCAN clustering on t-SNE features and plot the results with convex hulls.
+        
+        Parameters:
+        features_tsne (np.ndarray): A numpy array with image file names and their corresponding 2D t-SNE coordinates.
+        epsilon (float): The maximum distance between two samples for one to be considered as in the neighborhood of the other.
+        min_samples (int): The number of samples in a neighborhood for a point to be considered as a core point.
+        image_dir (Path): The directory containing the images.
+        
+        Returns:
+        dict: A dictionary where keys are cluster labels and values are cluster centers.
+        """
     coordinates_tsne = features_tsne[:, 1:].astype(float)
     db = DBSCAN(eps=epsilon, min_samples=min_samples).fit(coordinates_tsne)
     labels = db.labels_
@@ -314,7 +319,7 @@ def initialize_clustering(image_dir, model_path):
     MIN_SAMPLES = 10 # number of points clustered together for a region to be considered dense 
 
 
-    device = torch.device('cpu')
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model = YOLO(model_path)
     model.to(device)
 
