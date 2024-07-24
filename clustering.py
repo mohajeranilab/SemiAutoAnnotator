@@ -14,7 +14,6 @@ import os
 import shutil
 from tkinter import filedialog
 from scipy.spatial import ConvexHull
-import sys
 from tqdm import tqdm
 
  
@@ -47,7 +46,7 @@ def hook_fn(module, input, output):
     """
     Hook function to capture intermediate features from a specified layer
 
-    Parameters:
+    Params:
         module (torch.nn.Module): the layer module
         input (tuple): input to the layer
         output (torch.Tensor): output from the layer
@@ -60,7 +59,7 @@ def extract_features(model, img, layer_index):
     """
     Extract features from a specified layer in the model
     
-    Parameters:
+    Params:
         model (torch.nn.Module): the model from which to extract features
         img (torch.Tensor): the input image tensor
         layer_index (int): index of the layer to extract features from
@@ -88,7 +87,7 @@ def create_features_list(model, image_paths, layer_index, sample_percentage):
     """
     Create a dictionary of image features extracted from a specified layer of the model
     
-    Parameters:
+    Params:
         model (torch.nn.Module): the model from which to extract features
         image_paths (list): list of paths to the images
         layer_index (int): index of the layer to extract features from
@@ -101,15 +100,11 @@ def create_features_list(model, image_paths, layer_index, sample_percentage):
     features_dict = {}
 
     random.shuffle(image_paths)
-    print(image_paths)
     selected_paths = image_paths[:int(len(image_paths) * sample_percentage)]
     for i in tqdm(range(len(selected_paths))):
-        original_stdout = sys.stdout
 
-# Redirect stdout to /dev/null or equivalent
-        sys.stdout = open(os.devnull, 'w')
         img_path =  selected_paths[i]
-        print(img_path, "img)path")
+
         img = preprocess_image(img_path)
     
         features = extract_features(model, img, layer_index)
@@ -118,9 +113,7 @@ def create_features_list(model, image_paths, layer_index, sample_percentage):
             
             features_flattened = features.view(features.size(0), -1)
             features_dict[img_path.name] = features_flattened.cpu().numpy()
-
-        sys.stdout = original_stdout
-
+    
     return features_dict
 
 
@@ -128,7 +121,7 @@ def plot_features_space(features_dict):
     """
     Plot the feature space flattened to 2D space
     
-    Parameters:
+    Params:
         features_dict (dict): a dictionary where keys are image file names and values are feature arrays
     """
     X_values = np.array(list(features_dict.values())) 
@@ -151,7 +144,7 @@ def applying_tsne(features, perplexity):
     """
     Apply t-SNE algorithm to feature data, transforming it into a 2D space
     
-    Parameters:
+    Params:
         features (dict): A dictionary where keys are image file names and values are feature arrays
         perplexity (int): The perplexity parameter for t-SNE
     
@@ -194,15 +187,16 @@ def cluster_and_plot(features_tsne, epsilon, min_samples, image_dir):
     """
         Perform DBSCAN clustering on t-SNE features and plot the results with convex hulls.
         
-        Parameters:
-        features_tsne (np.ndarray): A numpy array with image file names and their corresponding 2D t-SNE coordinates.
-        epsilon (float): The maximum distance between two samples for one to be considered as in the neighborhood of the other.
-        min_samples (int): The number of samples in a neighborhood for a point to be considered as a core point.
-        image_dir (Path): The directory containing the images.
-        
+        Parames:
+            features_tsne (np.ndarray): A numpy array with image file names and their corresponding 2D t-SNE coordinates
+            epsilon (float): The maximum distance between two samples for one to be considered as in the neighborhood of the other
+            min_samples (int): The number of samples in a neighborhood for a point to be considered as a core point
+            image_dir (Path): The directory containing the images
+    
         Returns:
-        dict: A dictionary where keys are cluster labels and values are cluster centers.
+            dict: A dictionary where keys are cluster labels and values are cluster centers.
         """
+    
     coordinates_tsne = features_tsne[:, 1:].astype(float)
     db = DBSCAN(eps=epsilon, min_samples=min_samples).fit(coordinates_tsne)
     labels = db.labels_
@@ -276,7 +270,7 @@ def export_features(features_dict, filename):
     """
     Export features to a .npy file.
     
-    Parameters:
+    Params:
         features_dict (dict): A dictionary where keys are image file names and values are feature arrays
         filename (str): The name of the file to save the features
     """
@@ -295,7 +289,6 @@ def initialize_clustering(image_dir, model_path):
     # INCORRECT_IMAGE_PATHS = sorted(INCORRECT_IMAGE_DIR.glob("*.png"))
     IMAGE_PATHS = sorted(image_dir.glob("*.jpg")) # change to *.jpg for jpg images
     PERPLEXITY = 10 * (len(IMAGE_PATHS))/1000
-    print(IMAGE_PATHS)
 
     LAYER_INDEX = 21 # 21 is the last index before detection head, choosing highest layer for high level features 
     # 20 works and 22? 
