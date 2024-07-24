@@ -4,6 +4,7 @@
 This annotation labeler uses the concept of active learning and transfer learning to improve the efficiency of the annotation process.
 The user will start annotating images and will be assisted by a model that provides suggested annotations. After significant annotations are made, the user can then be prompted to retrain the assisting model to improve its performance. Each retraining session uses the current model as a base, incorporating its pre-trained weights as a starting point for the retraining. This iterative approach significantly reduces the time required for manual annotation by continuously refining the model's accuracy.
 
+If a model is selected, the annotation labeler also enhances efficiency by sorting images based on detection confidence, clustering them, and selecting diverse clusters. Using convex hulls, it identifies the most diverse and optimal data for annotation, ensuring a diverse and optimal dataset for retraining. This preprocessing step further refines the model's accuracy and reduces manual annotation time by focusing on the most informative samples.
 
 ## Installation
 1. Clone the repository:
@@ -23,7 +24,7 @@ Run the annotation_labeler.py file, three optional arguments can be passed,
 ```bash
 --frame_skip= (default: 50) --model_path= (default: None) --clustering=(default: False)
 ``` 
-It is NECESSARY to specify a path to the model/weights file if you want the assistance of a model AND make use of the clustering. Aftewards, the program will give you a file explorer window to select the video file you want to annotate (it will extract frames for you).
+It is NECESSARY to specify a path to the model/weights file if you want the assistance of a model AND make use of the clustering and data preprocessing. Aftewards, the program will give you a file explorer window to select the video file you want to annotate (it will extract frames for you).
 
 
 "In the 'used_videos/' directory, a folder will be created for each selected video, containing the video file itself along with subfolders for extracted frames and JSON annotations. The structure will look like this:
