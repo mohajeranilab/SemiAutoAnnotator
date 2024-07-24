@@ -112,7 +112,8 @@ class AnnotationTool():
         """
         Shows the image, also resizes it to a specific size and also moves it to a specific place on the screen
 
-        ***Moving to a specific place solved my issue of the cv2 window opening in random parts of the screen 
+        *** An issue I ran into is that when creating a new opencv2 window, it creates the window somewhere (previous position of the last opened cv2 window ?)
+        *** THEN moves the window to the specified location. This creates an undesired flickering effect.
         """
         
         if not any(value is None for value in self.window_info.values()):
@@ -174,11 +175,21 @@ class AnnotationTool():
         
     @staticmethod
     def move_to(window_name, x, y):
+        """
+        Move a OpenCV window to a specific position on the screen.
+
+        Params:
+            window_name (str): The name of the window to move
+            x (int): The x-coordinate of the new position
+            y (int): The y-coordinate of the new position
+        """
         cv2.moveWindow(window_name, x, y)
 
 
     def handle_prev_img(self):
-
+        """
+        Handle navigation to the previous image in the sequence
+        """
         self.bbox_mode = False
         self.pose_mode = False
         self.editing_mode = False
@@ -208,6 +219,18 @@ class AnnotationTool():
 
     @staticmethod
     def get_id(annotation_files, video_manager, data_type):    
+        """
+        Generate a unique id
+
+        Params:
+            annotation_files (list): list of annotation files
+            video_manager (VideoManager): Instance of VideoManager class to retrieve the video_dir
+            data_type (str): type of data to get ids (images or annotations)
+
+        Returns:
+            id (int): unique id 
+        """
+
         id_set = set()
         for annotation_file in annotation_files:
             with open(video_manager.video_dir + "\\" + annotation_file, 'r') as f:
@@ -220,6 +243,10 @@ class AnnotationTool():
 
 
     def drawing_annotations(self):
+        """
+        Draw annotations on the current image from the .json files
+        """
+
         annotation_types = ["bbox", "pose"]
 
         for annotation_file in self.annotation_files:
@@ -267,6 +294,26 @@ class AnnotationTool():
 
 
     def editing(self, event, x, y, flags, param):
+        """
+        Handle editing of annotations based on mouse events
+
+        Args:
+            event (int): type of mouse event (cv2.EVENT_LBUTTONDOWN, cv2.EVENT_LBUTTONUP).
+            x (int): x-coordinate of the mouse event
+            y (int): y-coordinate of the mouse event
+            flags (int): flags passed by OpenCV
+            param (any): additional parameters (not used)
+
+        Global Variables:
+            move_top_left (bool): indicates if the top-left corner of a bounding box is being moved
+            move_top_right (bool): indicates if the top-right corner of a bounding box is being moved
+            move_bottom_right (bool): indicates if the bottom-right corner of a bounding box is being moved
+            move_bottom_left (bool): indicates if the bottom-left corner of a bounding box is being moved
+            move_pose_point (bool): indicates if a pose keypoint is being moved
+            file_to_dump (str): file to update with new annotation data
+            moved (bool): indicates if an annotation has been moved
+        """
+
         global move_top_left, move_top_right, move_bottom_right, move_bottom_left, move_pose_point, file_to_dump, moved
         if event == cv2.EVENT_LBUTTONDOWN:
             self.temp_bbox_coords = None
@@ -470,6 +517,23 @@ class AnnotationTool():
         
 
     def drawing_bbox(self, event, x, y, flags, param):
+        """
+        Handle drawing of bounding boxes based on mouse events.
+
+        Args:
+            event (int): type of mouse event (cv2.EVENT_LBUTTONDOWN, cv2.EVENT_LBUTTONUP).
+            x (int): x-coordinate of the mouse event
+            y (int): y-coordinate of the mouse event
+            flags (int): relevant flags passed by OpenCV.
+            param (any): additional parameters (not used)
+
+        Global Variables:
+            start_x (int): x-coordinate where the bounding box drawing starts
+            start_y (int): y-coordinate where the bounding box drawing starts
+            end_x (int): x-coordinate where the bounding box drawing ends
+            end_y (int): y-coordinate where the bounding box drawing ends
+        """
+
         global start_x, start_y, end_x, end_y
         
     
@@ -566,6 +630,16 @@ class AnnotationTool():
 
 
     def drawing_pose(self, event, x, y, flags, param):
+        """
+        Handle drawing of pose keypoints based on mouse events.
+
+        Args:
+            event (int): type of mouse event (cv2.EVENT_LBUTTONDOWN)
+            x (int): x-coordinate of the mouse event
+            y (int): y-coordinate of the mouse event
+            flags (int): relevant flags passed by OpenCV
+            param (any): additional parameters (not used)
+        """
 
         with open(self.video_manager.video_dir + "/pose_annotations.json", 'r') as f:
             data = json.load(f)
@@ -643,6 +717,11 @@ class AnnotationTool():
             self.show_image()
 
     def annotating(self):
+        """
+        Main part of the code is within this function, handles annotation keypresses
+        
+        """
+        
 
         self.cv2_img.set_image()
         self.bbox_mode = False
@@ -684,7 +763,7 @@ class AnnotationTool():
                 self.model_manager.img_id = self.img_id
                 self.model_manager.object_id = self.object_id
                 self.model_manager.annotation_manager = self.annotation_manager
-                self.model_manager.video_manager = self.video_manager
+            
              
                 self.model_manager.predicting()
               
@@ -765,9 +844,6 @@ class AnnotationTool():
             self.pyqtwindow.window_name = self.cv2_img.name
 
 
-           
-            
-                
             while True:
                 key = cv2.waitKey(1)
              
@@ -1208,8 +1284,10 @@ class AnnotationTool():
             device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
          
             self.model_manager.model = YOLO(self.model_manager.model_path)
-        
             self.model_manager.model.to(device)
+            
+            self.model_manager.video_manager = self.video_manager
+            self.model_manager.predict_all(self.image_dir)
             self.model_detecting = "On"
 
             #comment the below code to turn off/on clustering 

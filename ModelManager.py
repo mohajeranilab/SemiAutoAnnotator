@@ -14,15 +14,70 @@ from annotation_labeler import *
 
 
 class ModelManager:
+    """
+    The ModelManager class handles the training and prediction processes for an annotation labeler using a YOLO model.
+    """
+    
     def __init__(self):
         
         self.conf_threshold = 0.25 
+        self.correct_dir = "correctly_detected/"
+        self.incorrect_dir = "incorrectly_detected/"
+         
+        
+
+    def predict_all(self, image_dir):
+        images = os.listdir(image_dir)
+        # Define paths for correct and incorrect directories
+        correct_dir_path = os.path.join(self.video_manager.video_dir, self.correct_dir)
+        incorrect_dir_path = os.path.join(self.video_manager.video_dir, self.incorrect_dir)
+
+
+        if os.path.exists(correct_dir_path):
+            shutil.rmtree(correct_dir_path)
+        if os.path.exists(incorrect_dir_path):
+            shutil.rmtree(incorrect_dir_path)
+
+        os.makedirs(correct_dir_path)
+        os.makedirs(incorrect_dir_path)
+
+        for image in images:
+
+            bbox_values = self.model.predict(image_dir + "\\" + image, conf=self.conf_threshold)[0].boxes
+            
+            num_of_objects = len(bbox_values.conf)
+            
+            conf_list = []
+            for i in range(num_of_objects):
+                conf = bbox_values.conf[i].item()
+                conf_list.append(conf)
+                pred_x1, pred_y1, pred_x2, pred_y2 = map(int, bbox_values.xyxy[i].tolist())
+
+            
+            conf_list.sort()
+            two_highest_mean_conf = conf_list[len(conf_list)-2:]
+
+            if num_of_objects < 1:
+                print("no objects detected")
+                shutil.copy(image_dir + "\\" + image, incorrect_dir_path)
+            elif (pred_y2 - pred_y1) * (pred_x2 - pred_x1) > 5625:
+                print("bbox too small, less than 5625 area")
+                shutil.copy(image_dir + "\\" + image, incorrect_dir_path)
+            elif num_of_objects > 5:
+                print("no more than 5 mouses should be in a cage ")
+                shutil.copy(image_dir + "\\" + image, incorrect_dir_path)
+            elif (sum(two_highest_mean_conf)/2) < 0.5:
+                print("Confidences are too low")
+                shutil.copy(image_dir + "\\" + image, incorrect_dir_path)
+            else:
+                shutil.copy(image_dir + "\\" + image, correct_dir_path)
+
 
     def retrain(self):
         """
-        Will retrain on the annotated images of chosen video files
-
+        Will retrain the model on the annotated images of chosen video files
         """
+
         cv2.destroyAllWindows()
         base_path = Path("labeler_dataset")
 
@@ -163,20 +218,36 @@ class ModelManager:
             self.annotation_manager.save_to_json(info, "bbox")
             self.annotation_manager.id += 1
 
-        conf_list.sort()
-        two_highest_mean_conf = conf_list[len(conf_list)-2:]
+
+        """
+        the below portion is code that moves images into either a correct or incorrect directory ONLY when the annotation labeler gets to the image
+        """
+        # Check and create directories if they do not exist
+        # correct_dir_path = os.path.join(self.video_manager.video_dir, self.correct_dir)
+        # incorrect_dir_path = os.path.join(self.video_manager.video_dir, self.incorrect_dir)
+        # print(correct_dir_path)
+        # print(incorrect_dir_path)
+
+        # if not os.path.exists(correct_dir_path):
+        #     os.makedirs(correct_dir_path)
+
+        # if not os.path.exists(incorrect_dir_path):
+        #     os.makedirs(incorrect_dir_path)
+        # conf_list.sort()
+        # two_highest_mean_conf = conf_list[len(conf_list)-2:]
         # print(sum(two_highest_mean_conf)/2)
+
         # if (pred_y2 - pred_y1) * (pred_x2 - pred_x1) > 5625:
 
         #     print("bbox too small, less than 5625 area")
-        #     shutil.copy(self.image_path, self.video_manager.video_dir[])
+        #     shutil.copy(self.img_path, incorrect_dir_path)
         # elif num_of_objects > 5:
         #     print("no more than 5 mouses should be in a cage ")
-        #     shutil.copy(self.image_path, self.video_manager.video_dir[])
+        #     shutil.copy(self.img_path, incorrect_dir_path)
 
         # elif (sum(two_highest_mean_conf)/2) < 0.5:
         #     print("Confidences are too low")
-        #     shutil.copy(self.image_path, self.video_manager.video_dir[])
+        #     shutil.copy(self.img_path, incorrect_dir_path)
             
         # else:
-        #     shutil.copy(self.image_path, self.video_manager.video_dir[])
+        #     shutil.copy(self.img_path, correct_dir_path)

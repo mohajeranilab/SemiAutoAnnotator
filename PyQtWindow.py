@@ -178,5 +178,6 @@ class PyQtWindow(QMainWindow):
             x_coord (int): The x-coordinate to move the window to
             y_coord (int): The y-coordinate to move the window to
         """
+        
         self.move(x_coord, y_coord)
 

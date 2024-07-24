@@ -7,6 +7,9 @@ from tkinter import Tk, filedialog
 
 
 class VideoManager():
+    """
+    The VideoManager class manages video-related operations for an annotation labeler, including extracting frames from videos and creating annotated videos.
+    """
 
     def __init__(self, frame_skip, annotation_colors, annotation_files):
    
@@ -16,6 +19,7 @@ class VideoManager():
         self.annotation_colors = annotation_colors 
         self.annotation_files = annotation_files 
 
+
     def extract_frames(self):
         """
         Extract frames from a selected video that the user wants to annotate 
@@ -23,6 +27,7 @@ class VideoManager():
         Returns:
             video_name (str): name of selected video        
         """
+
         root = Tk()
         root.attributes("-topmost", True)
         root.withdraw()

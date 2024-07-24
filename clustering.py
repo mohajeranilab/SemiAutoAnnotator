@@ -336,7 +336,7 @@ def initialize_clustering(image_dir, model_path):
     print("Plotting transformed feature space.....")
     plot_reduced_feature_space(features_tsne)
 
-    cluster_centers = cluster_and_plot(features_tsne, EPSILON, MIN_SAMPLES, IMAGE_PATHS, image_dir)
+    cluster_centers = cluster_and_plot(features_tsne, EPSILON, MIN_SAMPLES, image_dir)
 
     export_features(features, f"{image_dir.parent}/features_list.npy")
     
