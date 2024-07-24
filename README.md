@@ -44,28 +44,27 @@ The annotations created in the json files are very similar to the COCO dataset f
 You can either press the buttons on the PyQt GUI on the side, or by pressing the specific keybinds. The following key and button presses provide different results when the image window is SELECTED.
 
 - “B”: Bounding Box Mode. Begin drawing a bounding box around an object (click, drag, and release).
-  - “F”. Annotation Feces. After entering Bounding Box Mode, you can press “F” to annotate for feces.
-  - “H”. Hidden Annotations. After entering Bounding Box Mode, you can press “H” to start a hidden annotation for certain objects that are hidden or out of the screen. 
+  - “F”: Annotation Feces. After entering Bounding Box Mode, you can press “F” to annotate for feces.
+  - “H”: Hidden Annotations. After entering Bounding Box Mode, you can press “H” to start a hidden annotation for certain objects that are hidden or out of the screen. 
 - “P”. Pose Mode. Once it is in pose mode, you can press on numbers 1-7 for different parts of the mouse to annotate and place down keypoints.  
-  - "1". Head 
-  - "2". Tail
-  - "3". Neck
-  - "4". R Hand
-  - "5". L Hand
-  - "6". R Leg
-  - "7". L Leg
-- “D”. Deletes Annotations. Deletes all annotations for the current image.
-- “Ctrl+Z”. Undo. Undo the last annotation, if there are no annotations in the current image, go back to the previous image.
-- “Enter”. Next Image. Goes to the next image of the dataset.
-- “Backspace/Delete”. Last Image. Goes to the previous image of the dataset.
-- “Esc”. Exit. Exits out of the program. 
-- “N”. Increment Object ID. Increase the object ID by 1.
-- "J". Decrement Object ID. Decrease the object ID by 1. 
-- “R”. Retrain. A file explorer window will appear and the user can select the video folders they want to train on ONLY IF it has annotated frames. The model being used currently will be used as pretrained weights during training. After the training process by YOLO is completed, it will exit out of the program.
-- “V”. Make Video. A file explorer window will appear and the user can select the video folder they want to create a clip with the annotations made for that video, the clip will be saved as “output_video.mp4”.
-- “M”. Toggle Model. The model will either be turned off or on, the default is set to on. If no model is given when starting the program, it will be set to off permanently.
-- "E". Editing Mode. The user will now be able to edit the annotations made. To edit the bbox annotations, click and drag one of the four squares
-
+  - "1": Head 
+  - "2": Tail
+  - "3": Neck
+  - "4": R Hand
+  - "5": L Hand
+  - "6": R Leg
+  - "7": L Leg
+- “D”: Deletes Annotations. Deletes all annotations for the current image.
+- “Ctrl+Z”: Undo. Undo the last annotation, if there are no annotations in the current image, go back to the previous image.
+- “Enter”: Next Image. Goes to the next image of the dataset.
+- “Backspace/Delete”: Last Image. Goes to the previous image of the dataset.
+- “Esc”: Exit. Exits out of the program. 
+- “N”: Increment Object ID. Increase the object ID by 1.
+- "J": Decrement Object ID. Decrease the object ID by 1. 
+- “R”: Retrain. A file explorer window will appear and the user can select the video folders they want to train on ONLY IF it has annotated frames. The model being used currently will be used as pretrained weights during training. After the training process by YOLO is completed, it will exit out of the program.
+- “V”: Make Video. A file explorer window will appear and the user can select the video folder they want to create a clip with the annotations made for that video, the clip will be saved as “output_video.mp4”.
+- “M”: Toggle Model. The model will either be turned off or on, the default is set to on. If no model is given when starting the program, it will be set to off permanently.
+- "E": Editing Mode. The user will now be able to edit the annotations made. To edit the bbox annotations, click and drag one of the four squares
 
 
 Once retraining starts, another folder will be created called labeler_dataset/, it contains further subfolders with images and labels in YOLO training format. The structure will look like this:
