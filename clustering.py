@@ -27,6 +27,7 @@ def preprocess_image(img_path):
     Returns:
         torch.Tensor: Preprocessed image tensor
     """
+
     transform = transforms.Compose([
         transforms.Resize((640, 640)),
         transforms.Grayscale(num_output_channels=3), 
@@ -70,14 +71,17 @@ def extract_features(model, img, layer_index):
 
     global intermediate_features
     intermediate_features = []
+
+    # register a forward hook to the specified layer in the model
     hook = model.model.model[layer_index].register_forward_hook(hook_fn)
 
-    with torch.no_grad(): # not calculating forward pass
+    # perform forward pass through model without getting gradients
+    with torch.no_grad(): 
         model(img)
-
     hook.remove()
-    if intermediate_features:
-        
+
+    # return any captured extracted frames
+    if intermediate_features:    
         return intermediate_features[0]
     else:
         return None
@@ -100,9 +104,11 @@ def create_features_list(model, image_paths, layer_index, sample_percentage):
     features_dict = {}
 
     random.shuffle(image_paths)
-    selected_paths = image_paths[:int(len(image_paths) * sample_percentage)]
-    for i in tqdm(range(len(selected_paths))):
 
+    selected_paths = image_paths[:int(len(image_paths) * sample_percentage)]
+
+
+    for i in tqdm(range(len(selected_paths))):
         img_path =  selected_paths[i]
 
         img = preprocess_image(img_path)
@@ -111,8 +117,8 @@ def create_features_list(model, image_paths, layer_index, sample_percentage):
 
         if features is not None:
             
-            features_flattened = features.view(features.size(0), -1)
-            features_dict[img_path.name] = features_flattened.cpu().numpy()
+   
+            features_dict[img_path.name] = features.cpu().numpy()
     
     return features_dict
 
@@ -146,7 +152,7 @@ def applying_tsne(features, perplexity):
     
     Params:
         features (dict): A dictionary where keys are image file names and values are feature arrays
-        perplexity (int): The perplexity parameter for t-SNE
+        perplexity (int): controls the effective number of neighbors that each point considers during dimensionality reduction
     
     Returns:
         np.ndarray: A numpy array with image file names and their corresponding 2D t-SNE coordinates
@@ -157,10 +163,12 @@ def applying_tsne(features, perplexity):
     if len(X_values) == 0:
         print("No features detected.")
         return None
-    X_values = X_values.reshape(len(X_values), -1)
+    # print(X_values)
+    # X_values = X_values.reshape(len(X_values), -1)
+    # print(X_values)
     X_keys = np.array(list(features.keys()))
     X_values = StandardScaler().fit_transform(X_values)
-    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
+    tsne = TSNE(n_components=2, perplexity=perplexity)
     coordinates_tsne = tsne.fit_transform(X_values)
     X_tsne_with_names = np.column_stack((X_keys, coordinates_tsne))
 
@@ -285,27 +293,14 @@ def initialize_clustering(image_dir, model_path):
     # IMAGE_FOLDER = filedialog.askdirectory(initialdir="/", title="SELECT IMAGE FOLDER")
     # IMAGE_DIR = Path(IMAGE_FOLDER)
  
-    # INCORRECT_IMAGE_DIR = Path("incorrectly_detected")
-    # INCORRECT_IMAGE_PATHS = sorted(INCORRECT_IMAGE_DIR.glob("*.png"))
-    IMAGE_PATHS = sorted(image_dir.glob("*.jpg")) # change to *.jpg for jpg images
-    PERPLEXITY = 10 * (len(IMAGE_PATHS))/1000
 
-    LAYER_INDEX = 21 # 21 is the last index before detection head, choosing highest layer for high level features 
-    # 20 works and 22? 
+    IMAGE_PATHS = sorted(image_dir.glob("*.jpg")) # change to *.jpg for jpg images
+    PERPLEXITY =  10 * (len(IMAGE_PATHS))/1000
+
+    LAYER_INDEX = 21 # 21? is the last index before detection head, choosing highest layer for high level features 
+
     SAMPLE_PERCANTAGE = 1
 
-    #IMAGES_PER_CLUSTERS = 5
-
-    # t-SNE params
-    # GOOD PARAMS: (~1000 images: (15, 5), (20, 5)), (~2000 images: (30, 5), )
-    # new dataaset ~900 (20, 5), ~ 1800 (20, 5)
-    #PERPLEXITY = 10 # controls number of neighbors used in the algorithm, a guess about the number of close neigbors each point has
-
-    # It determines the balance between local and global aspects of the data manifold. Higher perplexity values tend to result in more global views of the data, while lower perplexity values focus more on local structure.
-
-    # Low values focus on local structure, emphasizing smaller-scale structures in the data. Lead to tighter clusters 
-
-    # High values result in a more global view of the data, leading to more spread-out clusters in the visualization and preserving the global structure of the data
 
     # DBScan params
     EPSILON = 5 # distance measure to locate points in the neighborhood of any point 
