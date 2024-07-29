@@ -2,9 +2,8 @@ import cv2
 import os
 import shutil
 import json
-import sys
 from tkinter import Tk, filedialog
-
+from PyQt5.QtWidgets import QApplication
 
 class VideoManager():
     """
@@ -38,9 +37,8 @@ class VideoManager():
             filetypes=(("Video files", "*.mp4;*.avi;*.mov;*.mkv"), ("All files", "*.*"))
         )
 
-        if not video_path:
-            print("No video file selected.")
-            sys.exit()
+        assert video_path, "No video file selected."
+      
         
         # extracting video name and creating a directory for the video
         video_name, _ = os.path.splitext(os.path.basename(video_path))
@@ -56,9 +54,8 @@ class VideoManager():
             os.makedirs(self.video_dir + "/extracted_frames/")
 
         cap = cv2.VideoCapture(video_path)
-        if not cap.isOpened():
-            print("Error: Could not open video.")
-            sys.exit()
+        assert cap.isOpened(), "Error: Could not open video."
+       
             
         frame_count = 0
         extracted_count = 0

@@ -5,15 +5,14 @@ import shutil
 import json
 import random
 from datetime import datetime
-import sys
 from tkinter import Tk, filedialog, messagebox
 import warnings 
 
-from PyQtWindow import *
+# from PyQtWindows import *
 from annotation_labeler import *
 
 
-class ModelManager:
+class ModelManager():
     """
     The ModelManager class handles the training and prediction processes for an annotation labeler using a YOLO model.
     """
@@ -178,7 +177,6 @@ class ModelManager:
         # start model training with specific parameters
         self.model.train(data="annotation_labeler.yaml", epochs = 100, patience=15, degrees=30, shear = 30)
         print("Model has finished training, use the new model weights and run the program again.")
-        sys.exit()
    
     def predicting(self):
         """
