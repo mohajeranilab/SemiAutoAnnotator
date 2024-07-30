@@ -1,3 +1,6 @@
+
+
+
 import cv2
 import os
 from pathlib import Path
@@ -8,17 +11,16 @@ from datetime import datetime, timedelta
 import argparse
 import sys
 import screeninfo
-from tkinter import Tk, filedialog, messagebox
 from tqdm import tqdm
 import pywinctl as pwc
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import Qt
 import copy
 
 from VideoManager import *
 from AnnotationManager import *
 from ModelManager import * 
-from PyQtWindows import ButtonWindow
+from PyQtWindows import ButtonWindow, ScrollCvWindow
 
 class CV2Image():
     def __init__(self, path, name):
@@ -95,7 +97,7 @@ class AnnotationTool():
         self.pose_mode = False
         self.bbox_type = None
         self.pyqt_button_window = ButtonWindow()
-   
+        
         self.pose_type = None
         self.current_dir = None
         self.imgs = None 
@@ -161,9 +163,9 @@ class AnnotationTool():
             cv2.resizeWindow(self.cv2_img.name, (1, 1))
             cv2.moveWindow(self.cv2_img.name, -5000, -5000)
         cv2.resizeWindow(self.cv2_img.name, (window_width, window_height))  
-    
         cv2.moveWindow(self.cv2_img.name, x, y)
         self.pyqt_button_window.move_to_coordinates(x - 200, y)
+        self.pyqt_scroll_bar.move_to_coordinates(x + 6, y + window_height + 30)
 
         if self.text_to_write:
             cv2.putText(self.cv2_img.get_image(), self.text_to_write, (int(self.cv2_img.width * 0.05), self.cv2_img.height - int(self.cv2_img.height * 0.05) - self.textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
@@ -173,7 +175,9 @@ class AnnotationTool():
         cv2.imshow(self.cv2_img.name, self.cv2_img.get_image())
         cv2.setWindowProperty(self.cv2_img.name, cv2.WND_PROP_TOPMOST, 1)
     
-        
+
+
+
     @staticmethod
     def move_to(window_name, x, y):
         """
@@ -992,7 +996,22 @@ class AnnotationTool():
                         self.show_image()
                         cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
 
+                elif self.pyqt_scroll_bar.moved == True:
+        
                    
+                    self.img_num = self.pyqt_scroll_bar.img_num
+                    self.pyqt_scroll_bar.moved = False
+                    self.pose_mode = False
+                    self.bbox_mode = False
+                    self.editing_mode = False
+                    self.already_passed = False
+                    self.object_id = 1
+                    self.show_image()
+
+                    cv2.destroyAllWindows()
+                    return
+
+
                 elif key == 13 or self.pyqt_button_window.button_states["next image"]:
                     self.redo_stack = []
                     if self.pyqt_button_window.button_states["next image"]: # enter; next image in dataset  
@@ -1239,7 +1258,7 @@ class AnnotationTool():
     
      
         
-        screen = screeninfo.get_monitors()[0]  # Assuming you want the primary monitor
+        screen = screeninfo.get_monitors()[0]  # [0] -> primary monitor
         width, height = screen.width, screen.height
         self.screen_center_x = int((width - 700) / 2)
         self.screen_center_y = int((height - 500)/ 2)
@@ -1316,18 +1335,25 @@ class AnnotationTool():
                 self.annotations_exists = True
                 break
 
-        # Create a window pop up to determine if user wants to continue where they left off 
-        result = "no"
-        if self.annotations_exists:
-            window = Tk()
-            window.attributes('-topmost', True)
-            window.withdraw()
-            result = messagebox.askquestion("Continue to Next Image", "Do you want to continue your work on the image following the last annotated image?")
 
-            window.destroy()
+        if self.annotations_exists:
+            msg_box = QMessageBox()
+            msg_box.setIcon(QMessageBox.Question)
+            msg_box.setWindowTitle("Continue to Next Image")
+            msg_box.setText("Do you want to continue your work on the image following the last annotated image?")
+            msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            msg_box.setDefaultButton(QMessageBox.No)
+            
+            result = msg_box.exec_()
+
+            if result == QMessageBox.Yes:
+                result = True
+            else:
+                result = False
+            
 
         self.img_num = 0
-    
+
         # directory list will be the list of clusters if a model is chosen, or a list of extracted frames
         directories = [self.image_dir] if not dir_list else dir_list
         self.annotation_manager = AnnotationManager(self.video_manager.video_dir, self.annotation_files)
@@ -1335,11 +1361,17 @@ class AnnotationTool():
         for self.current_dir in directories:
             
             self.imgs = os.listdir(self.current_dir)
+            self.pyqt_scroll_bar = ScrollCvWindow(self.imgs)
+            self.pyqt_scroll_bar.setWindowFlags(Qt.WindowStaysOnTopHint)
+            
+            self.pyqt_scroll_bar.show()
             
 
             with tqdm(total=len(self.imgs), desc=f" {(self.current_dir.split('_')[-1]).replace('/', '')}") as pbar:
                 while self.img_num < len(self.imgs):
-                    
+                    self.pyqt_scroll_bar.img_num = self.img_num
+                    # if self.pyqt_scroll_bar.moved == True:
+                    #     self.img_num = self.pyqt_scroll_bar.img_num
                     self.is_hidden = 0
                     self.annotations_exists = False
                     annotated_image_ids = set()
@@ -1348,6 +1380,7 @@ class AnnotationTool():
                     imagename = os.path.basename(imagepath)
                     self.cv2_img = CV2Image(imagepath, imagename)
                     self.pyqt_button_window.window_name = self.cv2_img.name
+                    self.pyqt_scroll_bar.window_name = self.cv2_img.name
                     if int(((self.cv2_img.name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
                       
                         self.cv2_img = CV2Image(imagepath, imagename)
@@ -1372,7 +1405,7 @@ class AnnotationTool():
                         if not self.annotations_exists:
                             self.annotating()
                         else:
-                            if result == "no":
+                            if result == False:
                                 self.annotating()
                         
                     
@@ -1390,15 +1423,13 @@ class AnnotationTool():
 if __name__ == "__main__":
   
     app = QApplication(sys.argv) 
-    pyqt_window = ButtonWindow()
-
-    #pyqt_window.show()
-
+    
+    
     tool = AnnotationTool()
 
     tool.run_tool()
- 
-    sys.exit(app.exec_())
+    #sys.exit(app.exec_())
+
 
 
   

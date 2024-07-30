@@ -44,7 +44,7 @@ class ButtonWindow(QMainWindow):
 
     
         self.setWindowTitle("Key Presses")
-        self.setGeometry(400, 100, 205, 480)  # (x, y, width, height)
+        self.setGeometry(-5000, -5000, 205, 480)  # (x, y, width, height)
 
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
@@ -192,7 +192,8 @@ class ScrollCvWindow(QMainWindow):
     def __init__(self, img_list):
         super().__init__()
         self.setWindowTitle("ScrollBar and OpenCV Example")
-        self.setGeometry(100, 100, 500, 50)
+        self.setGeometry(-5000, -5000, 640, 10)
+        self.moved = False
         self.img_list = img_list
         self.window_name = None
         # Create a central widget and set it as the central widget of the main window
@@ -211,21 +212,11 @@ class ScrollCvWindow(QMainWindow):
         layout.addWidget(self.scroll_bar)
 
     def on_scroll(self, value):
-        img = cv2.imread("used_videos\\f_2024_05_31_12_58_53_05\\extracted_frames\\"+ self.img_list[value])
-        cv2.imshow("Image Window", img)
-        self.img_num = value
+ 
         self.moved = True
-        print(value)
-        pass
-
-    def moveEvent(self, event):
-        from annotation_labeler import AnnotationTool
-        super().moveEvent(event)
-
-        if self.window_name:
-            opencv_x = self.pos().x()
-            opencv_y = self.pos().y() + 50
-            AnnotationTool.move_to(self.window_name, opencv_x, opencv_y)
+        self.img_num = value
+      
+       
 
     def move_to_coordinates(self, x_coord, y_coord):
         """

@@ -5,8 +5,8 @@ import shutil
 import json
 import random
 from datetime import datetime
-from tkinter import Tk, filedialog, messagebox
 import warnings 
+from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox
 
 # from PyQtWindows import *
 from annotation_labeler import *
@@ -93,10 +93,7 @@ class ModelManager():
         label_train_path.mkdir(parents=True, exist_ok=True)
         label_val_path.mkdir(parents=True, exist_ok=True)
 
-        # intializing tkinter for file dialog
-        root = Tk() 
-        root.attributes('-topmost', True)
-        root.withdraw()
+        
 
         # Select all the video files to train, it will look inside the video folders (if they exist) and retrieve the images and their annotations
         video_paths = []
@@ -104,9 +101,11 @@ class ModelManager():
     Press Cancel or exit out of the file explorer when finished choosing videos.
         """)
         while True:
-            video_path = filedialog.askdirectory(
-                initialdir="used_videos/",
-                title="SELECT VIDEO FOLDERS TO TRAIN"
+
+            video_path = QFileDialog.getExistingDirectory(
+                None,
+                "Select Video Folders to Train",
+                "used_videos/"
             )
 
             if video_path == "":
@@ -115,7 +114,7 @@ class ModelManager():
             if video_path not in video_paths:
                 video_paths.append(video_path)
 
-        root.destroy()
+
         if "" in video_paths:
             video_paths.remove("")
         assert len(video_paths) > 0, "There are no video files selected"

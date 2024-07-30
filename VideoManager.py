@@ -2,8 +2,7 @@ import cv2
 import os
 import shutil
 import json
-from tkinter import Tk, filedialog
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QFileDialog
 
 class VideoManager():
     """
@@ -27,15 +26,14 @@ class VideoManager():
             video_name (str): name of selected video        
         """
 
-        root = Tk()
-        root.attributes("-topmost", True)
-        root.withdraw()
-
-        video_path = filedialog.askopenfilename(
-            initialdir="/", 
-            title="SELECT VIDEO FILE",
-            filetypes=(("Video files", "*.mp4;*.avi;*.mov;*.mkv"), ("All files", "*.*"))
+      
+        video_path, _ = QFileDialog.getOpenFileName(
+            None,
+            "Select Video File",
+            "/",
+            "Video files (*.mp4 *.avi *.mov *.mkv);;All files (*)"
         )
+  
 
         assert video_path, "No video file selected."
       
@@ -86,7 +84,7 @@ class VideoManager():
         cap.release()
         print(f"Extracted {extracted_count} new frames to 'extracted_frames'")
 
-        root.destroy()
+        # root.destroy()
       
         return video_name
     
@@ -95,11 +93,12 @@ class VideoManager():
         Creates a video from the selected frames that have been annotated. An output video will be created 
         """
 
-        video_path = filedialog.askdirectory(
-            initialdir="/", 
-            title="SELECT VIDEO FOLDER IN used_videos/",
-            
+        video_path = QFileDialog.getExistingDirectory(
+            None,
+            "Select Video Folder",
+            "/",
         )
+  
 
         print("Combining annotated frames to video ......")
 
