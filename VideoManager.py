@@ -108,7 +108,9 @@ class VideoManager():
 
         # read annotations from files
         for annotation_file in self.annotation_files:
-            with open(video_path + "\\" + annotation_file, 'r') as f:
+            #os.path.join(video_manager.video_dir, annotation_file)
+            with open(os.path.join(video_path, annotation_file) ,'r') as f:
+            #with open(video_path + "\\" + annotation_file, 'r') as f:
                 data = json.load(f)
             if len(data["annotations"]) != 0:
                 for image_data in data["images"]:
@@ -122,7 +124,7 @@ class VideoManager():
         all_annotations = {}
         
         for annotation_file in self.annotation_files:
-            with open(video_path + "\\" + annotation_file, 'r') as f:
+            with open(os.path.join(video_path, annotation_file), 'r') as f:
                 data = json.load(f)
             
             for annotation in data["annotations"]:

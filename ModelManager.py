@@ -131,8 +131,8 @@ class ModelManager():
             if not os.path.exists(os.path.join(video_path, "pose_annotations.json")):
                 warnings.warn(f"There are no pose annotations made for {video_path}")
            
-            
-            with open(video_path + "/bbox_annotations.json", 'r') as f:
+            #video_path + "/bbox"
+            with open(os.path.join(video_path, "bbox_annotations.json"), 'r') as f:
                 data = json.load(f)
 
             for image_data in data["images"]:

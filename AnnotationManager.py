@@ -1,4 +1,6 @@
 import json
+import os
+
 
 class AnnotationManager():
     """
@@ -28,7 +30,9 @@ class AnnotationManager():
 
         annotated_image_ids = None
         for annotation_file in self.annotation_files:
-            with open(self.video_dir + "\\" + annotation_file, 'r') as f:
+            
+           # self.video_dir + "\\" + annotation_file
+            with open(os.path.join(self.video_dir, annotation_file), 'r') as f:
                 data = json.load(f)
 
             # if no images exist in the file, skip to the next file
@@ -45,7 +49,7 @@ class AnnotationManager():
             if annotation_file == "pose_annotations.json":
                 data["annotations"] = [annotation_data for annotation_data in data["annotations"] if annotation_data["keypoints"]]
             
-            with open(self.video_dir + "\\" + annotation_file, 'w') as f:
+            with open(os.path.join(self.video_dir, annotation_file), 'w') as f:
                 json.dump(data, f, indent=4)
        
         return annotated_image_ids
@@ -64,9 +68,9 @@ class AnnotationManager():
             "bbox": 0,
             "pose": 1
         }.get(type, None)
-
+#self.video_dir +"\\" + self.annotation_files[file_index]
             
-        with open(self.video_dir +"\\" + self.annotation_files[file_index], 'r') as f:
+        with open(os.path.join(self.video_dir, self.annotation_files[file_index]), 'r') as f:
             data = json.load(f)
 
         image_id = annotations["images"]["id"]
@@ -79,5 +83,5 @@ class AnnotationManager():
 
         data["annotations"].append(annotations["annotation"])
 
-        with open(self.video_dir + "\\" + self.annotation_files[file_index], 'w') as f:
+        with open(os.path.join(self.video_dir, self.annotation_files[file_index]), 'w') as f:
             json.dump(data, f, indent=4)
