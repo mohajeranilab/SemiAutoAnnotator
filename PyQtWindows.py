@@ -1,5 +1,3 @@
-# from annotation_labeler import *
-
 from PyQt5.QtWidgets import QMainWindow, QPushButton, QWidget, QVBoxLayout, QApplication, QVBoxLayout, QScrollBar
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
@@ -9,16 +7,16 @@ import numpy as np
 import os
 
 
-class ButtonWindow(QMainWindow):
-    def __init__(self):
+class MainWindow(QMainWindow):
+    def __init__(self, img_list):
         """
         Initialize PyQtWindow with button states, names and create the main buttons
         """
-
+        
         super().__init__()
         self.window_name = None
-
-
+        self.alrdy_passed = False
+        self.img_num = None
         self.button_states = {
             "bounding box": False,
             "pose": False,
@@ -41,15 +39,33 @@ class ButtonWindow(QMainWindow):
             "r leg": False,
             "l leg": False
         }
-
-    
+        self.moved = False
+        self.img_list = img_list
         self.setWindowTitle("Key Presses")
-        self.setGeometry(-5000, -5000, 205, 480)  # (x, y, width, height)
+        self.setGeometry(-5000, -5000, 205, 480)  # (x, y, width, height), set to -5000, -5000 so when it is initialized its off the screen
 
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
         self.layout = QVBoxLayout(central_widget)
 
+        self.original_buttons()
+
+
+    def clear_layout(self):
+        """
+        Clears current layout by removing all widgets
+        """
+
+        for i in reversed(range(self.layout.count())):
+            widget = self.layout.itemAt(i).widget()
+            if widget is not None:
+                widget.deleteLater()
+
+
+    def create_static_buttons(self):
+        """
+        Create minimize, exit, and scrollbar widgets that will always be on the window
+        """
         # create minimize button
         self.minimize_button = QPushButton("Minimize", self)
         self.minimize_button.clicked.connect(lambda: self.showMinimized())
@@ -64,26 +80,35 @@ class ButtonWindow(QMainWindow):
         self.exit_button.setIcon(icon)
         self.layout.addWidget(self.exit_button)
 
-        self.original_buttons()
+        # create scrollbar 
+        self.scroll_area = QWidget(self)
+        self.scroll_layout = QVBoxLayout(self.scroll_area)
+        self.scroll_bar = QScrollBar()
+        self.scroll_bar.setOrientation(Qt.Horizontal)
+        self.scroll_bar.setMinimum(0)
+        self.scroll_bar.setMaximum(len(self.img_list) - 1)
+        self.scroll_bar.valueChanged.connect(self.on_scroll)
+        self.scroll_layout.addWidget(self.scroll_bar)
+        self.layout.addWidget(self.scroll_area)
+        
 
 
-    def clear_layout(self):
-        """
-        Clears current layout by removing all widgets
-        """
-
-        for i in reversed(range(self.layout.count())):
-            widget = self.layout.itemAt(i).widget()
-            if widget is not None:
-                widget.deleteLater()
-                
+    def on_scroll(self, value):
+ 
+        self.moved = True
+        self.img_num = value
+       
 
     def original_buttons(self):
         """
         Create the main buttons in the PyQtWindow
         """
-      
-        self.clear_layout()
+
+        if self.alrdy_passed:
+            self.clear_layout()
+        else:
+            self.alrdy_passed = True
+       
         
         # reset button states
         for button_function in self.button_states.keys():
@@ -116,7 +141,13 @@ class ButtonWindow(QMainWindow):
             self.layout.addWidget(self.button)
             self.button.setIcon(icon)
 
-
+        self.create_static_buttons()
+    
+    def on_scroll(self, value):
+ 
+        self.moved = True
+        self.img_num = value
+      
     def on_button_clicked(self, key):
         """
         Change the states of buttons when clicked
@@ -161,6 +192,7 @@ class ButtonWindow(QMainWindow):
         self.return_button.setIcon(icon)
         self.layout.addWidget(self.return_button)
 
+        self.create_static_buttons()
 
     def moveEvent(self, event):
         """
@@ -187,53 +219,11 @@ class ButtonWindow(QMainWindow):
         
         self.move(x_coord, y_coord)
 
-
-class ScrollCvWindow(QMainWindow):
-    def __init__(self, img_list):
-        super().__init__()
-        self.setWindowTitle("ScrollBar and OpenCV Example")
-        self.setGeometry(-5000, -5000, 640, 10)
-        self.moved = False
-        self.img_list = img_list
-        self.window_name = None
-        # Create a central widget and set it as the central widget of the main window
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-     
-        # Create a vertical layout for the central widget
-        layout = QVBoxLayout(central_widget)
-        self.img_num = None
-        # Create a QScrollBar
-        self.scroll_bar = QScrollBar()
-        self.scroll_bar.setOrientation(Qt.Horizontal)
-        self.scroll_bar.setMinimum(0)
-        self.scroll_bar.setMaximum(len(img_list)-1)
-        self.scroll_bar.valueChanged.connect(self.on_scroll)
-        layout.addWidget(self.scroll_bar)
-
-    def on_scroll(self, value):
- 
-        self.moved = True
-        self.img_num = value
-      
        
-
-    def move_to_coordinates(self, x_coord, y_coord):
-        """
-        Move the window to specified coordinates
-
-        Params:
-            x_coord (int): The x-coordinate to move the window to
-            y_coord (int): The y-coordinate to move the window to
-        """
-        
-        self.move(x_coord, y_coord)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    pyqt_window = ButtonWindow()
-    scroll_cv_window = ScrollCvWindow(os.listdir("used_videos\\f_2024_05_31_12_58_53_05\\extracted_frames\\"))
-    pyqt_window.show()
-    scroll_cv_window.show()
+    img_list = os.listdir("used_videos\\f_2024_05_31_12_58_53_05\\extracted_frames\\")
+    window = MainWindow(img_list)
+    window.show()
     sys.exit(app.exec_())
-
