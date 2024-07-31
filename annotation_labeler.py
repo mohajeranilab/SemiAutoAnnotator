@@ -1,6 +1,3 @@
-
-
-
 import cv2
 import os
 from pathlib import Path
@@ -20,7 +17,7 @@ import copy
 from VideoManager import *
 from AnnotationManager import *
 from ModelManager import * 
-from PyQtWindows import ButtonWindow, ScrollCvWindow
+from PyQtWindows import MainWindow
 
 class CV2Image():
     def __init__(self, path, name):
@@ -96,14 +93,14 @@ class AnnotationTool():
         self.bbox_mode = False
         self.pose_mode = False
         self.bbox_type = None
-        self.pyqt_button_window = ButtonWindow()
+
         
         self.pose_type = None
         self.current_dir = None
         self.imgs = None 
 
         self.redo_stack = []
-        self.pyqt_button_window.setWindowFlags(Qt.WindowStaysOnTopHint)
+   
 
     
     
@@ -159,13 +156,14 @@ class AnnotationTool():
             flag = True
         cv2.namedWindow(self.cv2_img.name, cv2.WINDOW_NORMAL)  
 
+
         if flag:
             cv2.resizeWindow(self.cv2_img.name, (1, 1))
             cv2.moveWindow(self.cv2_img.name, -5000, -5000)
         cv2.resizeWindow(self.cv2_img.name, (window_width, window_height))  
         cv2.moveWindow(self.cv2_img.name, x, y)
-        self.pyqt_button_window.move_to_coordinates(x - 200, y)
-        self.pyqt_scroll_bar.move_to_coordinates(x + 6, y + window_height + 30)
+        self.pyqt_window.move_to_coordinates(x - 200, y)
+    
 
         if self.text_to_write:
             cv2.putText(self.cv2_img.get_image(), self.text_to_write, (int(self.cv2_img.width * 0.05), self.cv2_img.height - int(self.cv2_img.height * 0.05) - self.textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
@@ -175,7 +173,6 @@ class AnnotationTool():
         cv2.imshow(self.cv2_img.name, self.cv2_img.get_image())
         cv2.setWindowProperty(self.cv2_img.name, cv2.WND_PROP_TOPMOST, 1)
     
-
 
 
     @staticmethod
@@ -238,7 +235,8 @@ class AnnotationTool():
 
         id_set = set()
         for annotation_file in annotation_files:
-            with open(video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+  
+            with open(os.path.join(video_manager.video_dir, annotation_file), 'r') as f:
                 data_file = json.load(f)
             id_set.update(data["id"] for data in data_file[data_type])
         id = 0
@@ -255,7 +253,7 @@ class AnnotationTool():
         annotation_types = ["bbox", "pose"]
 
         for annotation_file in self.annotation_files:
-            with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+            with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
         
                 annotations = json.load(f)
             
@@ -327,7 +325,7 @@ class AnnotationTool():
                 for annotation_file in self.annotation_files:
                     if breakout:
                         break
-                    with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+                    with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
                         data = json.load(f)
 
                     img_id = next((img_data["id"] for img_data in data["images"] if img_data["file_name"] == self.cv2_img.path), None)
@@ -463,7 +461,7 @@ class AnnotationTool():
             if move_top_left or move_top_right or move_bottom_left or move_bottom_right or move_pose_point:
                 self.cv2_img.set_image()
                 for annotation_file in self.annotation_files:
-                    with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+                    with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
                         data = json.load(f)
 
                     for i, annotation_data in enumerate(data["annotations"]):
@@ -483,7 +481,7 @@ class AnnotationTool():
 
                             file_to_dump = annotation_file
                             del data["annotations"][i]
-                            with open(self.video_manager.video_dir + "\\" + file_to_dump, 'w') as f:
+                            with open(os.path.join(self.video_manager.video_dir, file_to_dump), 'w') as f:
                                 json.dump(data, f, indent=4)
                             break
 
@@ -573,7 +571,7 @@ class AnnotationTool():
             self.annotation_manager.id = self.get_id(self.annotation_files, self.video_manager, "annotations")
             self.img_id = None
             for annotation_file in self.annotation_files:
-                with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+                with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
                     data = json.load(f)
 
                 
@@ -646,7 +644,7 @@ class AnnotationTool():
             param (any): additional parameters (not used)
         """
 
-        with open(self.video_manager.video_dir + "/pose_annotations.json", 'r') as f:
+        with open(os.path.join(self.video_manager.video_dir, "pose_annotations.json"), 'r') as f:
             data = json.load(f)
 
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -662,7 +660,7 @@ class AnnotationTool():
                     annotation["time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     break
                 
-            with open(self.video_manager.video_dir + "/pose_annotations.json", 'w') as f:
+            with open(os.path.join(self.video_manager.video_dir, "pose_annotations.json"), 'w') as f:
                 json.dump(data, f, indent = 4)
        
             self.drawing_annotations()
@@ -739,7 +737,7 @@ class AnnotationTool():
         
         for annotation_file in self.annotation_files:
 
-            with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+            with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
                 data = json.load(f)
 
                 for image_data in data["images"]:
@@ -748,8 +746,8 @@ class AnnotationTool():
 
         if self.img_id == None:
             self.img_id = self.get_id(self.annotation_files, self.video_manager, "images")
-
-        with open(self.video_manager.video_dir + "/bbox_annotations.json", 'r') as f:
+       
+        with open(os.path.join(self.video_manager.video_dir, "bbox_annotations.json"), 'r') as f:
             data = json.load(f)
 
             for annotation in data["annotations"]:
@@ -775,7 +773,7 @@ class AnnotationTool():
     
             prev_img_id = self.img_id - 1
             for annotation_file in self.annotation_files:
-                with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+                with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
                     data = json.load(f)
 
                 for image_data in data["images"]:
@@ -838,7 +836,7 @@ class AnnotationTool():
                                 data["images"].append(new_image_info)
 
 
-                            with open(self.video_manager.video_dir + "\\" + annotation_file, 'w') as f:
+                            with open(os.path.join(self.video_manager.video_dir, annotation_file), 'w') as f:
                                 
                                 json.dump(data, f, indent=4)
         
@@ -846,7 +844,7 @@ class AnnotationTool():
             self.text_to_write = None 
             self.show_image()
 
-            self.pyqt_button_window.window_name = self.cv2_img.name
+            self.pyqt_window.window_name = self.cv2_img.name
 
 
             while True:
@@ -859,10 +857,10 @@ class AnnotationTool():
 
                     sys.exit()
 
-                elif key == ord('e') or self.pyqt_button_window.button_states["editing"]:
+                elif key == ord('e') or self.pyqt_window.button_states["editing"]:
              
-                    if self.pyqt_button_window.button_states["editing"]:
-                        self.pyqt_button_window.button_states["editing"] = False
+                    if self.pyqt_window.button_states["editing"]:
+                        self.pyqt_window.button_states["editing"] = False
                         
                         
                     if self.editing_mode == False:
@@ -885,23 +883,23 @@ class AnnotationTool():
                         self.show_image()
                         cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
 
-                elif key == ord('r') or self.pyqt_button_window.button_states["retrain"]:
-                    if self.pyqt_button_window.button_states["retrain"]:
-                        self.pyqt_button_window.button_states["retrain"] = False
+                elif key == ord('r') or self.pyqt_window.button_states["retrain"]:
+                    if self.pyqt_window.button_states["retrain"]:
+                        self.pyqt_window.button_states["retrain"] = False
                     self.model_manager.retrain()
                 
 
 
-                elif key == ord('v') or self.pyqt_button_window.button_states["make video"]: # make video
-                    if self.pyqt_button_window.button_states["make video"]:
-                        self.pyqt_button_window.button_states["make video"] = False
+                elif key == ord('v') or self.pyqt_window.button_states["make video"]: # make video
+                    if self.pyqt_window.button_states["make video"]:
+                        self.pyqt_window.button_states["make video"] = False
                     
                     self.video_manager.make_video()
 
-                elif (key == ord('m') or self.pyqt_button_window.button_states["toggle model"]) and self.model_manager.model_path != None: # "M": Turns model detection on or off, as shown on the image
+                elif (key == ord('m') or self.pyqt_window.button_states["toggle model"]) and self.model_manager.model_path != None: # "M": Turns model detection on or off, as shown on the image
           
-                    if self.pyqt_button_window.button_states["toggle model"]:
-                        self.pyqt_button_window.button_states["toggle model"] = False
+                    if self.pyqt_window.button_states["toggle model"]:
+                        self.pyqt_window.button_states["toggle model"] = False
                    
 
                     
@@ -914,9 +912,9 @@ class AnnotationTool():
 
 
                     
-                elif key == ord('j') or self.pyqt_button_window.button_states["decrement id"]: # "J": Previous object ID
-                    if self.pyqt_button_window.button_states["decrement id"]:
-                        self.pyqt_button_window.button_states["decrement id"]
+                elif key == ord('j') or self.pyqt_window.button_states["decrement id"]: # "J": Previous object ID
+                    if self.pyqt_window.button_states["decrement id"]:
+                        self.pyqt_window.button_states["decrement id"]
                         
 
 
@@ -925,9 +923,9 @@ class AnnotationTool():
                     self.update_img_with_id()
                 
 
-                elif key == ord('b') or self.pyqt_button_window.button_states["bounding box"]: # bbox mode
-                    if self.pyqt_button_window.button_states["bounding box"]: #= not self.pyqt_button_window.button_states["bounding box"]
-                        self.pyqt_button_window.button_states["bounding box"] = False  # Reset the button state after processing it once
+                elif key == ord('b') or self.pyqt_window.button_states["bounding box"]: # bbox mode
+                    if self.pyqt_window.button_states["bounding box"]: 
+                        self.pyqt_window.button_states["bounding box"] = False  # Reset the button state after processing it once
                     
                     if not self.bbox_mode: 
                         self.bbox_mode = True
@@ -949,9 +947,9 @@ class AnnotationTool():
                     self.drawing_annotations()
                     self.show_image()
                 
-                elif key == ord('p') or self.pyqt_button_window.button_states["pose"]: # pose mode
-                    if self.pyqt_button_window.button_states["pose"]:
-                        self.pyqt_button_window.button_states["pose"] = False
+                elif key == ord('p') or self.pyqt_window.button_states["pose"]: # pose mode
+                    if self.pyqt_window.button_states["pose"]:
+                        self.pyqt_window.button_states["pose"] = False
                         
 
                     if self.pose_mode == False:
@@ -996,11 +994,10 @@ class AnnotationTool():
                         self.show_image()
                         cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
 
-                elif self.pyqt_scroll_bar.moved == True:
-        
-                   
-                    self.img_num = self.pyqt_scroll_bar.img_num
-                    self.pyqt_scroll_bar.moved = False
+                elif self.pyqt_window.moved == True:
+
+                    self.img_num = self.pyqt_window.img_num
+                    self.pyqt_window.moved = False
                     self.pose_mode = False
                     self.bbox_mode = False
                     self.editing_mode = False
@@ -1012,12 +1009,13 @@ class AnnotationTool():
                     return
 
 
-                elif key == 13 or self.pyqt_button_window.button_states["next image"]:
+                elif key == 13 or self.pyqt_window.button_states["next image"]:
+                    
                     self.redo_stack = []
-                    if self.pyqt_button_window.button_states["next image"]: # enter; next image in dataset  
-                        self.pyqt_button_window.button_states["next image"] = False
+                    if self.pyqt_window.button_states["next image"]: # enter; next image in dataset  
+                        self.pyqt_window.button_states["next image"] = False
                         
-                    #cv2.destroyAllWindows()
+
                     self.pose_mode = False
                     self.bbox_mode = False
                     self.editing_mode = False
@@ -1025,22 +1023,26 @@ class AnnotationTool():
                     self.object_id = 1
                     self.show_image()
                     cv2.destroyAllWindows()
+                    self.pyqt_window.scroll_bar.setValue(self.img_num)
+                    self.pyqt_window.moved = False
                     return
 
-                elif key == 8 or self.pyqt_button_window.button_states["previous image"]:
+                elif key == 8 or self.pyqt_window.button_states["previous image"]:
                     self.redo_stack = []
-                    if self.pyqt_button_window.button_states["previous image"]:
-                        self.pyqt_button_window.button_states["previous image"] = False # backspace; prev_img 
+                    if self.pyqt_window.button_states["previous image"]:
+                        self.pyqt_window.button_states["previous image"] = False # backspace; prev_img 
                     self.show_image()
                     self.handle_prev_img()
+                    self.pyqt_window.scroll_bar.setValue(self.img_num)
+                    self.pyqt_window.moved = False
                     return
 
-                elif key == ord('d') or self.pyqt_button_window.button_states["delete"]: # delete all annotations for an image
-                    if self.pyqt_button_window.button_states["delete"]:
-                        self.pyqt_button_window.button_states["delete"] = False
+                elif key == ord('d') or self.pyqt_window.button_states["delete"]: # delete all annotations for an image
+                    if self.pyqt_window.button_states["delete"]:
+                        self.pyqt_window.button_states["delete"] = False
                         
                     for annotation_file in self.annotation_files:
-                        with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+                        with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
                             data = json.load(f)
                         
                             for annotation in data["annotations"]:
@@ -1048,7 +1050,7 @@ class AnnotationTool():
                                     self.redo_stack.append(annotation)
                         data["annotations"] = [annotation for annotation in data["annotations"] if annotation["image_id"] != self.img_id]
             
-                        with open(self.video_manager.video_dir + "\\" + annotation_file, 'w') as f:
+                        with open(os.path.join(self.video_manager.video_dir, annotation_file), 'w') as f:
                             json.dump(data, f, indent=4)
 
                     self.cv2_img.set_image()
@@ -1060,9 +1062,9 @@ class AnnotationTool():
                     self.editing_mode = False
                     self.object_id = 1
 
-                elif key == 89 or self.pyqt_button_window.button_states["redo"]: # no code for ctrl + y, pressing "y" == 86; redo
-                    if self.pyqt_button_window.button_states["redo"]:
-                        self.pyqt_button_window.button_states["redo"] = False
+                elif key == 89 or self.pyqt_window.button_states["redo"]: # no code for ctrl + y, pressing "y" == 86; redo
+                    if self.pyqt_window.button_states["redo"]:
+                        self.pyqt_window.button_states["redo"] = False
                     
                     if self.redo_stack:
                         info = self.redo_stack.pop()
@@ -1070,15 +1072,16 @@ class AnnotationTool():
                         if 'type' in info.keys():
                         
                             info["time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            with open(self.video_manager.video_dir + "\\" + "bbox_annotations.json", 'r') as f:
+                           
+                            with open(os.path.join(self.video_manager.video_dir, "bbox_annotations.json"), 'r') as f:
                                 data = json.load(f)
                             
                             data["annotations"].append(info)
-                            with open(self.video_manager.video_dir + "\\" + "bbox_annotations.json", 'w') as f:
+                            with open(os.path.join(self.video_manager.video_dir, "bbox_annotations.json"), 'w') as f:
                                 json.dump(data, f, indent=4)
 
                         else:
-                            with open(self.video_manager.video_dir + "\\" + "pose_annotations.json", 'r') as f:
+                            with open(os.path.join(self.video_manager.video_dir, "pose_annotations.json"), 'r') as f:
                                 data = json.load(f)
 
                             for i in range(len(data["annotations"])):
@@ -1087,21 +1090,21 @@ class AnnotationTool():
                                     data["annotations"][i]["keypoints"].append((info['pos'], info['coords']))
                             
                   
-                            with open(self.video_manager.video_dir + "\\" + "pose_annotations.json", 'w') as f:
+                            with open(os.path.join(self.video_manager.video_dir, "pose_annotations.json"), 'w') as f:
                                 json.dump(data, f, indent=4)
 
                         self.drawing_annotations()
                         self.show_image()
                    
-                elif key == 26 or self.pyqt_button_window.button_states["undo"]: # ctrl + z; undo
-                    if self.pyqt_button_window.button_states["undo"]:
-                        self.pyqt_button_window.button_states["undo"] = False
+                elif key == 26 or self.pyqt_window.button_states["undo"]: # ctrl + z; undo
+                    if self.pyqt_window.button_states["undo"]:
+                        self.pyqt_window.button_states["undo"] = False
                         
                         
                     is_empty = True
 
                     for annotation_file in self.annotation_files:
-                        with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+                        with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
                             data = json.load(f)
             
                         if any(annotation["image_id"] == self.img_id for annotation in data["annotations"]):
@@ -1118,7 +1121,7 @@ class AnnotationTool():
                         latest_time = None
                     
                     for annotation_file in self.annotation_files:
-                        with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+                        with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
                             data = json.load(f)
                         
                         for i, annotation in enumerate(data["annotations"]):
@@ -1129,7 +1132,7 @@ class AnnotationTool():
 
             
                     for annotation_file in self.annotation_files:
-                        with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+                        with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
                             data = json.load(f)
                         
                         for i in range(len(data["annotations"])):
@@ -1154,7 +1157,7 @@ class AnnotationTool():
                                     del data["annotations"][i]
                                 break
                         
-                        with open(self.video_manager.video_dir + "\\" + annotation_file, 'w') as f:
+                        with open(os.path.join(self.video_manager.video_dir, annotation_file), 'w') as f:
                             json.dump(data, f, indent=4)
                     self.cv2_img.set_image()
                     self.drawing_annotations()
@@ -1179,9 +1182,9 @@ class AnnotationTool():
                     self.text_to_write = mode_text
                     self.show_image()
                  
-                elif key == ord('n') or self.pyqt_button_window.button_states["increment id"]: # next mouse ID
-                    if self.pyqt_button_window.button_states["increment id"]:
-                        self.pyqt_button_window.button_states["increment id"] = False
+                elif key == ord('n') or self.pyqt_window.button_states["increment id"]: # next mouse ID
+                    if self.pyqt_window.button_states["increment id"]:
+                        self.pyqt_window.button_states["increment id"] = False
               
                     self.object_id += 1
 
@@ -1193,8 +1196,6 @@ class AnnotationTool():
                 if self.bbox_mode:
          
                    
-
-
                     bbox_options = {
                         ord('f'): ("feces", "Feces"),
                         ord('h'): ("normal", "Hidden")
@@ -1226,9 +1227,9 @@ class AnnotationTool():
                 }
 
                     for keybind, p_label in pose_options.items():
-                        if key == keybind or (self.pyqt_button_window.button_states[p_label.lower()]):
-                            if self.pyqt_button_window.button_states[p_label.lower()]:
-                                self.pyqt_button_window.button_states[p_label.lower()] = False
+                        if key == keybind or (self.pyqt_window.button_states[p_label.lower()]):
+                            if self.pyqt_window.button_states[p_label.lower()]:
+                                self.pyqt_window.button_states[p_label.lower()] = False
                             self.cv2_img.set_image()
                             self.drawing_annotations()
                             self.text_to_write = f"Pose Mode - {p_label} - {self.object_id}"
@@ -1287,10 +1288,10 @@ class AnnotationTool():
 
         # initialize the json files in the respective video directory
         for annotation_file in self.annotation_files:
-            if not os.path.exists(self.video_manager.video_dir + "\\" + annotation_file):
+            if not os.path.exists(os.path.join(self.video_manager.video_dir, annotation_file)):
                 json_content = {"images": [], "annotations": []}
                 
-                with open(self.video_manager.video_dir + "\\" + annotation_file, 'w') as f:
+                with open(os.path.join(self.video_manager.video_dir, annotation_file), 'w') as f:
                     json.dump(json_content, f, indent=4)
         dir_list = None
    
@@ -1328,7 +1329,7 @@ class AnnotationTool():
         
 
         for annotation_file in self.annotation_files:
-            with open(self.video_manager.video_dir + "\\" + annotation_file, 'r') as f:
+            with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
                 data = json.load(f)
 
             if data["annotations"]:
@@ -1357,68 +1358,63 @@ class AnnotationTool():
         # directory list will be the list of clusters if a model is chosen, or a list of extracted frames
         directories = [self.image_dir] if not dir_list else dir_list
         self.annotation_manager = AnnotationManager(self.video_manager.video_dir, self.annotation_files)
-        self.pyqt_button_window.show()
+        
         for self.current_dir in directories:
             
             self.imgs = os.listdir(self.current_dir)
-            self.pyqt_scroll_bar = ScrollCvWindow(self.imgs)
-            self.pyqt_scroll_bar.setWindowFlags(Qt.WindowStaysOnTopHint)
+  
+            self.pyqt_window = MainWindow(self.imgs)
+            self.pyqt_window.setWindowFlags(Qt.WindowStaysOnTopHint)
+            self.pyqt_window.show()
             
-            self.pyqt_scroll_bar.show()
-            
 
-            with tqdm(total=len(self.imgs), desc=f" {(self.current_dir.split('_')[-1]).replace('/', '')}") as pbar:
-                while self.img_num < len(self.imgs):
-                    self.pyqt_scroll_bar.img_num = self.img_num
-                    # if self.pyqt_scroll_bar.moved == True:
-                    #     self.img_num = self.pyqt_scroll_bar.img_num
-                    self.is_hidden = 0
-                    self.annotations_exists = False
-                    annotated_image_ids = set()
-                    self.img_num = int(self.img_num)
-                    imagepath = os.path.join(self.current_dir, self.imgs[int(self.img_num)])
-                    imagename = os.path.basename(imagepath)
-                    self.cv2_img = CV2Image(imagepath, imagename)
-                    self.pyqt_button_window.window_name = self.cv2_img.name
-                    self.pyqt_scroll_bar.window_name = self.cv2_img.name
-                    if int(((self.cv2_img.name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
-                      
-                        self.cv2_img = CV2Image(imagepath, imagename)
-                  
-                        annotated_image_ids = self.annotation_manager.cleaning()
-                    
-                        if annotated_image_ids and self.already_passed == False:
-                            for annotation_file in self.annotation_files:
-                                
-                                with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
-                                    data = json.load(f)
-
-                                if len(data["images"]) == 0:
-                                    continue
-
-                                for image_data in data["images"]:
-                                    if image_data["file_name"] == self.cv2_img.path:
-                                        if image_data["id"] in annotated_image_ids:
-                                            self.annotations_exists = True
-                                            continue
-                     
-                        if not self.annotations_exists:
-                            self.annotating()
-                        else:
-                            if result == False:
-                                self.annotating()
+            while True:
+                with tqdm(total=len(self.imgs), desc=f" {(self.current_dir.split('_')[-1]).replace('/', '')}") as pbar:
+                    while self.img_num < len(self.imgs):
                         
+                        self.is_hidden = 0
+                        self.annotations_exists = False
+                        annotated_image_ids = set()
+                        self.img_num = int(self.img_num)
+                        imagepath = os.path.join(self.current_dir, self.imgs[int(self.img_num)])
+                        imagename = os.path.basename(imagepath)
+                        self.cv2_img = CV2Image(imagepath, imagename)
+                        self.pyqt_window.window_name = self.cv2_img.name
                     
-                    self.img_num += 1
-                    pbar.n = self.img_num
-                    pbar.refresh()
+                        if int(((self.cv2_img.name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
+                        
+                            self.cv2_img = CV2Image(imagepath, imagename)
+                    
+                            annotated_image_ids = self.annotation_manager.cleaning()
+                        
+                            if annotated_image_ids and self.already_passed == False:
+                                for annotation_file in self.annotation_files:
+                                    
+                                    with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
+                                        data = json.load(f)
 
-            self.img_num = 0  # reset img_num for the next directory    
-         
-        cv2.destroyAllWindows()
-        sys.exit(app.exec_()) 
+                                    if len(data["images"]) == 0:
+                                        continue
 
+                                    for image_data in data["images"]:
+                                        if image_data["file_name"] == self.cv2_img.path:
+                                            if image_data["id"] in annotated_image_ids:
+                                                self.annotations_exists = True
+                                                continue
+                        
+                            if not self.annotations_exists:
+                                self.annotating()
+                            else:
+                                if result == False:
+                                    self.annotating()
+                            
+                        
+                        self.img_num += 1
+                        pbar.n = self.img_num
+                        pbar.refresh()
 
+                self.img_num = 0  # reset img_num for the next directory    
+        
 
 if __name__ == "__main__":
   
@@ -1428,7 +1424,7 @@ if __name__ == "__main__":
     tool = AnnotationTool()
 
     tool.run_tool()
-    #sys.exit(app.exec_())
+    sys.exit(app.exec_())
 
 
 
