@@ -78,6 +78,8 @@ class AnnotationTool():
         self.video_manager = None
         self.model_manager = None
 
+        self.established = False
+
         self.image_dir = None
 
         self.annotation_colors = []
@@ -115,6 +117,7 @@ class AnnotationTool():
         *** An issue I ran into is that when creating a new opencv2 window, it creates the window somewhere (previous position of the last opened cv2 window ?)
         *** THEN moves the window to the specified location. This creates an undesired flickering effect.
         """
+        global window_width_change, window_height_change
         
         if not any(value is None for value in self.window_info.values()):
             
@@ -124,8 +127,14 @@ class AnnotationTool():
                 x, y = window.left, window.top
                 
                 window_width, window_height = window.width, window.height
-                window_width -= 16
-                window_height -= 39
+                if not self.established:
+
+                    window_width_change = window.width - 720
+                    window_height_change = window.height - 540
+                    self.established = True
+              
+                window_width -= window_width_change
+                window_height -= window_height_change
                 self.window_info = {}
                 self.window_info["img_name"] = self.cv2_img.name
                 self.window_info["coordinates"] = (x, y)
@@ -143,7 +152,9 @@ class AnnotationTool():
             else:
                 x, y = self.screen_center_x, self.screen_center_y
     
-                window_width, window_height = self.cv2_img.width, self.cv2_img.height
+               
+                window_width, window_height = 720, 540
+          
 
         flag = False
         
