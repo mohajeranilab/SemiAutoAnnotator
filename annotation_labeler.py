@@ -1429,7 +1429,7 @@ class AnnotationTool():
 
                 else:
                     while self.img_num < len(self.imgs):
-                     
+                        
                         self.is_hidden = 0
                         self.annotations_exists = False
                         annotated_image_ids = set()
@@ -1438,7 +1438,7 @@ class AnnotationTool():
                         imagename = os.path.basename(imagepath)
                         self.cv2_img = CV2Image(imagepath, imagename)
                         self.pyqt_window.window_name = self.cv2_img.name
-                    
+                        
                         if int(((self.cv2_img.name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
                         
                             self.cv2_img = CV2Image(imagepath, imagename)

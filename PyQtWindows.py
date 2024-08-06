@@ -8,7 +8,7 @@ import os
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, img_list):
+    def __init__(self):
         """
         Initialize PyQtWindow with button states, names and create the main buttons
         """
@@ -40,7 +40,10 @@ class MainWindow(QMainWindow):
             "l leg": False
         }
         self.moved = False
-        self.img_list = img_list
+      
+        
+
+    def initialize(self):
         self.setWindowTitle("Key Presses")
         self.setGeometry(-5000, -5000, 205, 480)  # (x, y, width, height), set to -5000, -5000 so when it is initialized its off the screen
 
@@ -49,8 +52,6 @@ class MainWindow(QMainWindow):
         self.layout = QVBoxLayout(central_widget)
 
         self.original_buttons()
-
-
     def clear_layout(self):
         """
         Clears current layout by removing all widgets
@@ -81,6 +82,7 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.exit_button)
 
         # create scrollbar 
+        #if hasattr(MainWindow, "img_list"):
         self.scroll_area = QWidget(self)
         self.scroll_layout = QVBoxLayout(self.scroll_area)
         self.scroll_bar = QScrollBar()
@@ -90,8 +92,16 @@ class MainWindow(QMainWindow):
         self.scroll_bar.valueChanged.connect(self.on_scroll)
         self.scroll_layout.addWidget(self.scroll_bar)
         self.layout.addWidget(self.scroll_area)
-        
+    
+    def cluster_testing(self):
+        pass
 
+    def create_cluster_buttons(self, cluster_count):
+        pass
+        # for i in range(cluster_count):
+        #     self.cluster_button = QPushButton(f"Cluster {i}", self)
+        #     self.cluster_button.clicked.connect(lambda: )
+        #     self.layout.addWidget(self.cluster_button)
 
     def on_scroll(self, value):
  
