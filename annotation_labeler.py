@@ -443,7 +443,7 @@ class AnnotationTool():
                         info = {
                             "images": {
                                 "id": self.img_id,
-                                "efile_name": self.cv2_img.path,
+                                "file_name": self.cv2_img.path,
                                 "image_height": self.cv2_img.height,
                                 "image_width": self.cv2_img.width
                             },
@@ -1014,6 +1014,7 @@ class AnnotationTool():
                     self.editing_mode = False
                     self.already_passed = False
                     self.object_id = 1
+                    self.drawing_annotations()
                     self.show_image()
 
                     cv2.destroyAllWindows()
@@ -1153,10 +1154,7 @@ class AnnotationTool():
                                 if data["annotations"][i]["type"] == "pose":
                                     if len(data["annotations"][i]["keypoints"]) != 0:
                                         keypoints_pop = data["annotations"][i]["keypoints"].pop()
-                                        temp = {'pos': None,
-                                                'coords': None,
-                                                'id': None}
-                                        
+                                    
                                         self.redo_stack.append({'pos': keypoints_pop[0], 'coords': keypoints_pop[1], 'id': data['annotations'][i]['id']})
                                         break
                                     else:
@@ -1347,7 +1345,7 @@ class AnnotationTool():
                 self.annotations_exists = True
                 break
 
-
+        result = False
         if self.annotations_exists:
             msg_box = QMessageBox()
             msg_box.setIcon(QMessageBox.Question)
@@ -1369,19 +1367,24 @@ class AnnotationTool():
         # directory list will be the list of clusters if a model is chosen, or a list of extracted frames
         directories = [self.image_dir] if not dir_list else dir_list
         self.annotation_manager = AnnotationManager(self.video_manager.video_dir, self.annotation_files)
+        self.pyqt_window = MainWindow()
+        self.pyqt_window.setWindowFlags(Qt.WindowStaysOnTopHint)
         
-        for self.current_dir in directories:
+        self.pyqt_window.show()
+        for i, self.current_dir in enumerate(directories):
             
             self.imgs = os.listdir(self.current_dir)
-  
-            self.pyqt_window = MainWindow(self.imgs)
-            self.pyqt_window.setWindowFlags(Qt.WindowStaysOnTopHint)
-            self.pyqt_window.show()
+            self.pyqt_window.img_list = self.imgs
+            if i == 0:
+                self.pyqt_window.initialize()
+            self.pyqt_window.scroll_bar.setValue(self.img_num)
             
 
-            while True:
-                with tqdm(total=len(self.imgs), desc=f" {(self.current_dir.split('_')[-1]).replace('/', '')}") as pbar:
-                    while self.img_num < len(self.imgs):
+          
+            with tqdm(total=len(self.imgs), desc=f" {(self.current_dir.split('_')[-1]).replace('/', '')}") as pbar:
+                if len(directories) == 1:
+
+                    while True:
                         
                         self.is_hidden = 0
                         self.annotations_exists = False
@@ -1419,13 +1422,59 @@ class AnnotationTool():
                                 if result == False:
                                     self.annotating()
                             
-                        
-                        self.img_num += 1
+                        if self.img_num != len(self.imgs) - 1:
+                            self.img_num += 1
                         pbar.n = self.img_num
                         pbar.refresh()
 
+                else:
+                    while self.img_num < len(self.imgs):
+                        print('here')
+                        self.is_hidden = 0
+                        self.annotations_exists = False
+                        annotated_image_ids = set()
+                        self.img_num = int(self.img_num)
+                        imagepath = os.path.join(self.current_dir, self.imgs[int(self.img_num)])
+                        imagename = os.path.basename(imagepath)
+                        self.cv2_img = CV2Image(imagepath, imagename)
+                        self.pyqt_window.window_name = self.cv2_img.name
+                    
+                        if int(((self.cv2_img.name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
+                        
+                            self.cv2_img = CV2Image(imagepath, imagename)
+                    
+                            annotated_image_ids = self.annotation_manager.cleaning()
+                        
+                            if annotated_image_ids and self.already_passed == False:
+                                for annotation_file in self.annotation_files:
+                                    
+                                    with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
+                                        data = json.load(f)
+
+                                    if len(data["images"]) == 0:
+                                        continue
+
+                                    for image_data in data["images"]:
+                                        if image_data["file_name"] == self.cv2_img.path:
+                                            if image_data["id"] in annotated_image_ids:
+                                                self.annotations_exists = True
+                                                continue
+                        
+                            if not self.annotations_exists:
+                                self.annotating()
+                            else:
+                                if result == False:
+                                    self.annotating()
+                            
+                        if self.img_num != len(self.imgs):
+                            self.img_num += 1
+                        pbar.n = self.img_num
+                        pbar.refresh()
+
+                print('here123123')
+
                 self.img_num = 0  # reset img_num for the next directory    
-        
+    
 
 if __name__ == "__main__":
   
