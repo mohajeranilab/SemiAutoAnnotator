@@ -1429,7 +1429,7 @@ class AnnotationTool():
 
                 else:
                     while self.img_num < len(self.imgs):
-                        print('here')
+                     
                         self.is_hidden = 0
                         self.annotations_exists = False
                         annotated_image_ids = set()
