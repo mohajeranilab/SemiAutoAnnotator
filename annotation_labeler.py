@@ -1471,7 +1471,7 @@ class AnnotationTool():
                         pbar.n = self.img_num
                         pbar.refresh()
 
-                print('here123123')
+              
 
                 self.img_num = 0  # reset img_num for the next directory    
     
