@@ -95,7 +95,7 @@ class AnnotationTool():
         self.bbox_mode = False
         self.pose_mode = False
         self.bbox_type = None
-
+        self.current_dir_num = 0
         
         self.pose_type = None
         self.current_dir = None
@@ -729,6 +729,7 @@ class AnnotationTool():
 
             self.text_to_write = pose_mode_text
             self.show_image()
+            
 
     def annotating(self):
         """
@@ -1005,6 +1006,17 @@ class AnnotationTool():
                         self.show_image()
                         cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
 
+                elif self.pyqt_window.cluster_button == True:
+                    self.current_dir_num = self.pyqt_window.cluster_num
+                    
+                    self.pose_mode = False
+                    self.bbox_mode = False
+                    self.editing_mode = False 
+                    self.already_passed = False
+                    self.object_id = 1
+                    cv2.destroyAllWindows()
+                    return
+
                 elif self.pyqt_window.moved == True:
 
                     self.img_num = self.pyqt_window.img_num
@@ -1229,8 +1241,8 @@ class AnnotationTool():
                     ord('1'): ("Head"),
                     ord('2'): ("Neck"),
                     ord('3'): ("Tail"),
-                    ord('4'): ("R Hand"),
-                    ord('5'): ("L Hand"),
+                    ord('4'): ("R Ear"),
+                    ord('5'): ("L Ear"),
                     ord('6'): ("R Leg"),
                     ord('7'): ("L Leg")
                 }
@@ -1371,12 +1383,21 @@ class AnnotationTool():
         self.pyqt_window.setWindowFlags(Qt.WindowStaysOnTopHint)
         
         self.pyqt_window.show()
-        for i, self.current_dir in enumerate(directories):
-            
+        l = 0 
+        while self.current_dir_num < len(directories):
+            self.current_dir = directories[self.current_dir_num]
             self.imgs = os.listdir(self.current_dir)
             self.pyqt_window.img_list = self.imgs
-            if i == 0:
+            if l == 0:
+                if len(directories) > 1:
+                    self.pyqt_window.cluster_count = len(directories)
                 self.pyqt_window.initialize()
+                l += 1
+
+        #for i, self.current_dir in enumerate(directories):
+            
+            # if i == 0:
+            #     self.pyqt_window.initialize()
             self.pyqt_window.scroll_bar.setValue(self.img_num)
             
 
@@ -1438,7 +1459,8 @@ class AnnotationTool():
                         imagename = os.path.basename(imagepath)
                         self.cv2_img = CV2Image(imagepath, imagename)
                         self.pyqt_window.window_name = self.cv2_img.name
-                        
+                        self.pyqt_window.cluster_count = len(directories)
+
                         if int(((self.cv2_img.name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
                         
                             self.cv2_img = CV2Image(imagepath, imagename)
@@ -1465,6 +1487,9 @@ class AnnotationTool():
                             else:
                                 if result == False:
                                     self.annotating()
+                        if self.pyqt_window.cluster_button == True:
+                            self.pyqt_window.cluster_button = False
+                            break
                             
                         if self.img_num != len(self.imgs):
                             self.img_num += 1
@@ -1474,7 +1499,7 @@ class AnnotationTool():
               
 
                 self.img_num = 0  # reset img_num for the next directory    
-    
+            self.current_dir_num += 1
 
 if __name__ == "__main__":
   
@@ -1488,4 +1513,28 @@ if __name__ == "__main__":
 
 
 
-  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

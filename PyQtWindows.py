@@ -34,24 +34,30 @@ class MainWindow(QMainWindow):
             "head": False,
             "tail": False,
             "neck": False,
-            "r hand": False,
-            "l hand": False,
+            "r ear": False,
+            "l ear": False,
             "r leg": False,
             "l leg": False
         }
         self.moved = False
-      
-        
+        self.cluster_button = False
+        self.cluster_count = False
+
 
     def initialize(self):
         self.setWindowTitle("Key Presses")
         self.setGeometry(-5000, -5000, 205, 480)  # (x, y, width, height), set to -5000, -5000 so when it is initialized its off the screen
+        self.setFixedSize(205, 480)
 
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
         self.layout = QVBoxLayout(central_widget)
 
+    
         self.original_buttons()
+
+
+
     def clear_layout(self):
         """
         Clears current layout by removing all widgets
@@ -67,6 +73,7 @@ class MainWindow(QMainWindow):
         """
         Create minimize, exit, and scrollbar widgets that will always be on the window
         """
+        self.adjust_size()
         # create minimize button
         self.minimize_button = QPushButton("Minimize", self)
         self.minimize_button.clicked.connect(lambda: self.showMinimized())
@@ -81,6 +88,17 @@ class MainWindow(QMainWindow):
         self.exit_button.setIcon(icon)
         self.layout.addWidget(self.exit_button)
 
+        if self.cluster_count:
+            self.all_cluster_button = QPushButton(f"Clusters", self)
+            self.all_cluster_button.clicked.connect(lambda checked, cluster_count=self.cluster_count: self.create_cluster_buttons(cluster_count))
+            self.layout.addWidget(self.all_cluster_button)
+
+        # if self.cluster_count:     
+        #     for i in range(self.cluster_count):
+        #         self.cluster_button = QPushButton(f"Cluster {i}", self)
+        #         self.cluster_button.clicked.connect(lambda checked, index=i: self.cluster_testing(index))
+        #         self.layout.addWidget(self.cluster_button)
+
         # create scrollbar 
         #if hasattr(MainWindow, "img_list"):
         self.scroll_area = QWidget(self)
@@ -92,22 +110,45 @@ class MainWindow(QMainWindow):
         self.scroll_bar.valueChanged.connect(self.on_scroll)
         self.scroll_layout.addWidget(self.scroll_bar)
         self.layout.addWidget(self.scroll_area)
+         # Adjust the size of the window to fit the layout
     
-    def cluster_testing(self):
-        pass
+    def cluster_testing(self, num):
+        self.cluster_button = True
+        self.cluster_num = num
+   
+        
 
     def create_cluster_buttons(self, cluster_count):
-        pass
-        # for i in range(cluster_count):
-        #     self.cluster_button = QPushButton(f"Cluster {i}", self)
-        #     self.cluster_button.clicked.connect(lambda: )
-        #     self.layout.addWidget(self.cluster_button)
+        self.clear_layout()
+        for i in range(cluster_count):
+            self.cluster_button = QPushButton(f"Cluster {i}", self)
+            self.cluster_button.clicked.connect(lambda checked, index=i: self.cluster_testing(index))
+            self.layout.addWidget(self.cluster_button)
+        
 
+             
+        self.return_button = QPushButton("Return", self)
+        self.return_button.clicked.connect(self.original_buttons)
+        icon = QIcon("assets/images/undo.png")
+        self.return_button.setIcon(icon)
+        self.layout.addWidget(self.return_button)
+
+        self.create_static_buttons()
     def on_scroll(self, value):
  
         self.moved = True
         self.img_num = value
        
+
+    def adjust_size(self):
+        """
+        Adjust the size of the window based on the content
+        """
+        # Optionally, you can compute the size based on number of buttons or other content
+        content_height = self.layout.sizeHint().height()
+        content_width = self.layout.sizeHint().width()
+        self.resize(205, content_height)  # Adjust height and widt
+
 
     def original_buttons(self):
         """
@@ -187,7 +228,7 @@ class MainWindow(QMainWindow):
         self.clear_layout()
         
         
-        pose_button_names = ["Head", "Neck", "Tail", "R Hand", "L Hand", "R Leg", "L Leg"]
+        pose_button_names = ["Head", "Neck", "Tail", "R Ear", "L Ear", "R Leg", "L Leg"]
 
         for i, name in enumerate(pose_button_names):
             self.button = QPushButton(name + f" ({(i+1)})", self)
