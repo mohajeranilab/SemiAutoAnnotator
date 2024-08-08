@@ -73,7 +73,7 @@ class AnnotationTool():
         self.annotations_exists = None
         self.text_to_write = None
 
-
+        self.prev_img = False
         self.annotation_manager = None
         self.video_manager = None
         self.model_manager = None
@@ -294,8 +294,8 @@ class AnnotationTool():
                             keypoint_pairs = [
                                 ("head", "neck"),
                                 ("neck", "tail"),
-                                ("neck", "l hand"),
-                                ("neck", "r hand"),
+                                ("neck", "l ear"),
+                                ("neck", "r ear"),
                                 ("tail", "l leg"),
                                 ("tail", "r leg")
                             ]
@@ -309,7 +309,7 @@ class AnnotationTool():
 
     def editing(self, event, x, y, flags, param):
         """
-        Handle editing of annotations based on mouse events
+        Handles editing of annotations based on mouse events
 
         Args:
             event (int): type of mouse event (cv2.EVENT_LBUTTONDOWN, cv2.EVENT_LBUTTONUP).
@@ -353,7 +353,9 @@ class AnnotationTool():
 
                             self.temp_keypoints = annotation_data["keypoints"]
                             for keypoint in self.temp_keypoints:
+                        
                                 if abs(keypoint[1][0] - x) < 7.5 and abs(keypoint[1][1] - y) < 7.5:
+                                    
                                     self.keypoint_type = keypoint[0]
                                     self.keypoint_value = keypoint[1]
                                     self.annotation_manager.id = annotation_data["id"]
@@ -386,9 +388,11 @@ class AnnotationTool():
                             else:
                                 move_top_left = move_top_right = move_bottom_left = move_bottom_right = move_pose_point = False
 
+                        if breakout:
+                            break
                 moved = False
                 self.click_count += 1
-
+            print(self.keypoint_value)
         elif event == cv2.EVENT_LBUTTONUP:
             self.click_count = 0
             if moved:
@@ -782,75 +786,79 @@ class AnnotationTool():
              
                 self.model_manager.predicting()
               
-    
-            prev_img_id = self.img_id - 1
-            for annotation_file in self.annotation_files:
-                with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
-                    data = json.load(f)
+            if not self.prev_img:
+                prev_img_id = self.img_id - 1
+                for annotation_file in self.annotation_files:
+                    with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
+                        data = json.load(f)
 
-                for image_data in data["images"]:
-                    if prev_img_id == image_data["id"]:
-                        break
-                for annotation_data in data["annotations"]:
-                    if prev_img_id == annotation_data["image_id"]:
-                        if annotation_data["type"] == "normal bounding_box":
-                            info = {
-                                "id": self.get_id(self.annotation_files, self.video_manager, "annotations"), 
-                                "bbox": annotation_data["bbox"],
-                                "image_id": self.img_id,
-                                "object_id": annotation_data["object_id"],
-                                "iscrowd": annotation_data["iscrowd"],
-                                "area": annotation_data["area"],
-                                "type": annotation_data["type"],
-                                "is_hidden": annotation_data["is_hidden"],
-                                "conf": 1,
-                                "time": (datetime.now() - timedelta(seconds=1)).strftime("%Y-%m-%d %H:%M:%S")
-                            }
-                            
+                    
+                    # for image_data in data["images"]:
 
-                        elif annotation_data["type"] == "pose":
-                            
-                            info = {
-                                "id": self.get_id(self.annotation_files, self.video_manager, "annotations"),
-                                "keypoints": annotation_data["keypoints"],
-                                "image_id": self.img_id,
-                                "object_id": annotation_data["object_id"],
-                                "iscrowd": annotation_data["iscrowd"],
-                                "type": annotation_data["type"],
-                                "conf": 1,
-                                "time": (datetime.now() - timedelta(seconds=1)).strftime("%Y-%m-%d %H:%M:%S")
-                            }
-                            if info:
-                                info_copy = copy.deepcopy(info)
-                            
-                                del info_copy["id"]
-                                del info_copy["time"]
-
-                                found_annotation = False
-                                for annotation in data["annotations"]:
-                                    annotation_copy = copy.deepcopy(annotation)
-                                    del annotation_copy["id"]
-                                    del annotation_copy["time"]
-                                    if annotation_copy == info_copy:
-                                        found_annotation = True
-                                        break
-
-                                if not found_annotation:
-                                    data["annotations"].append(info)
-
-                            if not any(image["id"] == self.img_id for image in data["images"]):
-                                new_image_info = {
-                                    "id": self.img_id,
-                                    "file_name": self.cv2_img.path,
-                                    "image_height": self.cv2_img.height,
-                                    "image_width": self.cv2_img.width
+                    #     if prev_img_id == image_data["id"]:
+                    #         break
+                    for annotation_data in data["annotations"]:
+                        if self.img_id == annotation_data["image_id"]:
+                            break
+                        if prev_img_id == annotation_data["image_id"]:
+                            if annotation_data["type"] == "normal bounding_box":
+                                info = {
+                                    "id": self.get_id(self.annotation_files, self.video_manager, "annotations"), 
+                                    "bbox": annotation_data["bbox"],
+                                    "image_id": self.img_id,
+                                    "object_id": annotation_data["object_id"],
+                                    "iscrowd": annotation_data["iscrowd"],
+                                    "area": annotation_data["area"],
+                                    "type": annotation_data["type"],
+                                    "is_hidden": annotation_data["is_hidden"],
+                                    "conf": 1,
+                                    "time": (datetime.now() - timedelta(seconds=1)).strftime("%Y-%m-%d %H:%M:%S")
                                 }
-                                data["images"].append(new_image_info)
-
-
-                            with open(os.path.join(self.video_manager.video_dir, annotation_file), 'w') as f:
                                 
-                                json.dump(data, f, indent=4)
+
+                            elif annotation_data["type"] == "pose":
+                                
+                                info = {
+                                    "id": self.get_id(self.annotation_files, self.video_manager, "annotations"),
+                                    "keypoints": annotation_data["keypoints"],
+                                    "image_id": self.img_id,
+                                    "object_id": annotation_data["object_id"],
+                                    "iscrowd": annotation_data["iscrowd"],
+                                    "type": annotation_data["type"],
+                                    "conf": 1,
+                                    "time": (datetime.now() - timedelta(seconds=1)).strftime("%Y-%m-%d %H:%M:%S")
+                                }
+                                if info:
+                                    info_copy = copy.deepcopy(info)
+                                
+                                    del info_copy["id"]
+                                    del info_copy["time"]
+
+                                    found_annotation = False
+                                    for annotation in data["annotations"]:
+                                        annotation_copy = copy.deepcopy(annotation)
+                                        del annotation_copy["id"]
+                                        del annotation_copy["time"]
+                                        if annotation_copy == info_copy:
+                                            found_annotation = True
+                                            break
+
+                                    if not found_annotation:
+                                        data["annotations"].append(info)
+
+                                if not any(image["id"] == self.img_id for image in data["images"]):
+                                    new_image_info = {
+                                        "id": self.img_id,
+                                        "file_name": self.cv2_img.path,
+                                        "image_height": self.cv2_img.height,
+                                        "image_width": self.cv2_img.width
+                                    }
+                                    data["images"].append(new_image_info)
+
+
+                                with open(os.path.join(self.video_manager.video_dir, annotation_file), 'w') as f:
+                                    
+                                    json.dump(data, f, indent=4)
         
             self.drawing_annotations()
             self.text_to_write = None 
@@ -1049,6 +1057,7 @@ class AnnotationTool():
                     cv2.destroyAllWindows()
                     self.pyqt_window.scroll_bar.setValue(self.img_num)
                     self.pyqt_window.moved = False
+                    self.prev_img = False
                     return
 
                 elif key == 8 or self.pyqt_window.button_states["previous image"]:
@@ -1059,6 +1068,8 @@ class AnnotationTool():
                     self.handle_prev_img()
                     self.pyqt_window.scroll_bar.setValue(self.img_num)
                     self.pyqt_window.moved = False
+                    self.result = False
+                    self.prev_img = True
                     return
 
                 elif key == ord('d') or self.pyqt_window.button_states["delete"]: # delete all annotations for an image
@@ -1357,7 +1368,7 @@ class AnnotationTool():
                 self.annotations_exists = True
                 break
 
-        result = False
+        self.result = False
         if self.annotations_exists:
             msg_box = QMessageBox()
             msg_box.setIcon(QMessageBox.Question)
@@ -1366,12 +1377,12 @@ class AnnotationTool():
             msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
             msg_box.setDefaultButton(QMessageBox.No)
             
-            result = msg_box.exec_()
+            self.result = msg_box.exec_()
 
-            if result == QMessageBox.Yes:
-                result = True
+            if self.result == QMessageBox.Yes:
+                self.result = True
             else:
-                result = False
+                self.result = False
             
 
         self.img_num = 0
@@ -1440,7 +1451,7 @@ class AnnotationTool():
                             if not self.annotations_exists:
                                 self.annotating()
                             else:
-                                if result == False:
+                                if self.result == False:
                                     self.annotating()
                             
                         if self.img_num != len(self.imgs) - 1:
@@ -1485,7 +1496,7 @@ class AnnotationTool():
                             if not self.annotations_exists:
                                 self.annotating()
                             else:
-                                if result == False:
+                                if self.result == False:
                                     self.annotating()
                         if self.pyqt_window.cluster_button == True:
                             self.pyqt_window.cluster_button = False
@@ -1510,6 +1521,11 @@ if __name__ == "__main__":
 
     tool.run_tool()
     sys.exit(app.exec_())
+
+
+
+
+
 
 
 
