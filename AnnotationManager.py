@@ -48,7 +48,8 @@ class AnnotationManager():
             # for pose, only annotations with keypoints are kept
             if annotation_file == "pose_annotations.json":
                 data["annotations"] = [annotation_data for annotation_data in data["annotations"] if annotation_data["keypoints"]]
-            
+            else:
+                data["annotations"] = [annotation_data for annotation_data in data["annotations"] if annotation_data["image_id"] in annotated_image_ids]
             with open(os.path.join(self.video_dir, annotation_file), 'w') as f:
                 json.dump(data, f, indent=4)
        
