@@ -816,13 +816,7 @@ class AnnotationTool():
                                     prev_img_annotations = True
                                 
                             if not prev_img_annotations:
-                                break
-
-                        # for image_data in data["images"]:
-
-                        #     if self.cv2_img.path == image_data["file_name"]:
-                        #         brea
-
+                                continue
 
 
 
@@ -908,7 +902,7 @@ class AnnotationTool():
                     sys.exit()
 
                 elif key == ord('e') or self.pyqt_window.button_states["editing"]:
-             
+                    prev_img_annotations = True
                     if self.pyqt_window.button_states["editing"]:
                         self.pyqt_window.button_states["editing"] = False
                         
@@ -974,6 +968,7 @@ class AnnotationTool():
                 
 
                 elif key == ord('b') or self.pyqt_window.button_states["bounding box"]: # bbox mode
+                    prev_img_annotations = True
                     if self.pyqt_window.button_states["bounding box"]: 
                         self.pyqt_window.button_states["bounding box"] = False  # Reset the button state after processing it once
                     
@@ -998,6 +993,7 @@ class AnnotationTool():
                     self.show_image()
                 
                 elif key == ord('p') or self.pyqt_window.button_states["pose"]: # pose mode
+                    prev_img_annotations = True
                     if self.pyqt_window.button_states["pose"]:
                         self.pyqt_window.button_states["pose"] = False
                         
