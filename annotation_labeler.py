@@ -794,9 +794,11 @@ class AnnotationTool():
                 
                 
                 for annotation_file in self.annotation_files:
+                    breakout = False
                     with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
                         data = json.load(f)
                     self.prev_img_annotations = False
+
                     if data["images"]:
                         img_index = self.cv2_img.path.rfind('_img_') + 5  
                         jpg_index = self.cv2_img.path.rfind('.jpg')
@@ -825,9 +827,17 @@ class AnnotationTool():
 
 
                         for annotation_data in data["annotations"]:
+                          
                             if self.img_id == annotation_data["image_id"]:
+                            
+                                breakout = True
                                 break
+                        if breakout:
+                            continue
+
+                        for annotation_data in data["annotations"]:
                             if prev_img_id == annotation_data["image_id"]:
+                              
                                 if annotation_data["type"] == "normal bounding_box":
                                     info = {
                                         "id": self.get_id(self.annotation_files, self.video_manager, "annotations"), 
@@ -887,7 +897,7 @@ class AnnotationTool():
                                 with open(os.path.join(self.video_manager.video_dir, annotation_file), 'w') as f:
                                     
                                     json.dump(data, f, indent=4)
-        
+                           
             self.drawing_annotations()
             self.text_to_write = None 
             self.show_image()
@@ -1552,6 +1562,7 @@ if __name__ == "__main__":
 
     tool.run_tool()
     sys.exit(app.exec_())
+
 
 
 
