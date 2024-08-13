@@ -137,20 +137,20 @@ class VideoManager():
         for image_id, image_file in frames_to_write.items():
             if image_id in all_annotations:
                 self.cv2_img.set_image()
-                
+                image = cv2.imread(image_file)
                 for annotation_file, annotation in all_annotations[image_id]:
                     if annotation_file == "bbox_annotations.json":
-                        cv2.rectangle(self.cv2_img.get_image(), (annotation["bbox"][0], annotation["bbox"][1]), 
+                        cv2.rectangle(image, (annotation["bbox"][0], annotation["bbox"][1]), 
                                             (annotation["bbox"][2], annotation["bbox"][3]), 
                                             self.annotation_colors[annotation["object_id"]], 2)
 
                     elif annotation_file == "pose_annotations.json":
                         for keypoint_annotation in annotation["keypoints"]:
                             if len(keypoint_annotation) != 0:
-                                cv2.circle(self.cv2_img.get_image(), (keypoint_annotation[1][0], keypoint_annotation[1][1]), 
+                                cv2.circle(image, (keypoint_annotation[1][0], keypoint_annotation[1][1]), 
                                                 5, self.annotation_colors[annotation["object_id"]], -1)
 
-                video.write(self.cv2_img.get_image())
+                video.write(image)
 
         video.release()
 
