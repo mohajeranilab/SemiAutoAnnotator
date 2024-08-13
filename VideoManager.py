@@ -103,14 +103,14 @@ class VideoManager():
         print("Combining annotated frames to video ......")
 
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        video = cv2.VideoWriter("output_video.avi", fourcc, 30.0, (self.cv2_img.width, self.cv2_img.height))
+        video = cv2.VideoWriter(os.path.join(video_path, "output_video.avi"), fourcc, 30.0, (self.cv2_img.width, self.cv2_img.height))
         frames_to_write = {}
 
         # read annotations from files
         for annotation_file in self.annotation_files:
-            #os.path.join(video_manager.video_dir, annotation_file)
+       
             with open(os.path.join(video_path, annotation_file) ,'r') as f:
-            #with open(video_path + "\\" + annotation_file, 'r') as f:
+         
                 data = json.load(f)
             if len(data["annotations"]) != 0:
                 for image_data in data["images"]:

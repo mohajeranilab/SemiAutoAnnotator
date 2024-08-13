@@ -9,7 +9,7 @@ import warnings
 from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox
 
 # from PyQtWindows import *
-from annotation_labeler import *
+from ImageHandler import ImageHandler
 
 
 class ModelManager():
@@ -190,7 +190,7 @@ class ModelManager():
             conf_list.append(conf)
             pred_x1, pred_y1, pred_x2, pred_y2 = map(int, bbox_values.xyxy[i].tolist())
 
-            self.annotation_manager.id = AnnotationTool.get_id(self.annotation_files, self.video_manager, "annotations")
+            self.annotation_manager.id = ImageHandler.get_id(self.annotation_files, self.video_manager, "annotations")
             
             info = {
                 "images": {

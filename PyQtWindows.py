@@ -134,11 +134,7 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.return_button)
 
         self.create_static_buttons()
-    def on_scroll(self, value):
- 
-        self.moved = True
-        self.img_num = value
-       
+
 
     def adjust_size(self):
         """
@@ -249,14 +245,16 @@ class MainWindow(QMainWindow):
         """
         Override the move event to handle window movement
         """
-        from annotation_labeler import AnnotationTool
+        from ImageHandler import ImageHandler 
+        # from annotation_labeler import ImageHandler 
         super().moveEvent(event)
 
 
         if self.window_name:
             opencv_x = self.pos().x() + 200
             opencv_y = self.pos().y()
-            AnnotationTool.move_to(self.window_name, opencv_x, opencv_y)
+            
+            ImageHandler.move_to(self.window_name, opencv_x, opencv_y)
 
 
     def move_to_coordinates(self, x_coord, y_coord):

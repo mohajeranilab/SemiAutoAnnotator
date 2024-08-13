@@ -18,722 +18,26 @@ from VideoManager import *
 from AnnotationManager import *
 from ModelManager import * 
 from PyQtWindows import MainWindow
+from ImageHandler import CV2Image, ImageHandler
+from DrawingTool import DrawingTool
 
-class CV2Image():
-    def __init__(self, path, name):
-        """
-        Initializes a CV2Image object with the given image path and name.
 
-        Params:
-            path (str): The file path to the image
-            name (str): The name of the image
 
-        Raises:
-             ValueError: If the image cannot be loaded.
-        """
-
-        if path:
-            self.image = cv2.imread(path)
-        if self.image is None:
-            raise ValueError("Image could not be loaded.")
-        self.path = path
-        self.height, self.width, _ = self.image.shape
-     
-        self.name = name
-
-    def get_image(self):
-        """
-        Returns the image.
-        
-        Returns:
-           image (np.array): image read using cv2
-        """
-
-        return self.image
-    
-    def set_image(self):
-        """
-        Sets the image.
-        """
-
-        self.image = cv2.imread(self.path)
-        
 
 class AnnotationTool():
     def __init__(self):
     
         self.annotation_files = ["bbox_annotations.json", "pose_annotations.json"]
-       
-        self.img_num = 0
-        self.textSizeHeight = None
-        self.object_id = 1
-        self.already_passed = True
-        self.click_count = 0
-        self.is_hidden = False
-        self.annotations_exists = None
-        self.text_to_write = None
-
-        self.prev_img = False
-        self.annotation_manager = None
-        self.video_manager = None
-        self.model_manager = None
-
-        self.established = False
-
-        self.image_dir = None
-
-        self.annotation_colors = []
-        self.img_id = None
-        self.corner_size = 10
-
-        self.font_scale = 0.5
-        self.font_thickness = 0
-        self.font_color = (255, 255, 0)
-        self.window_info = {"img_name": None, "coordinates": None, "dimensions": None}
-   
-        self.editing_mode = False
-        self.bbox_mode = False
-        self.pose_mode = False
-        self.bbox_type = None
-        self.current_dir_num = 0
-        
-        self.pose_type = None
-        self.current_dir = None
-        self.imgs = None 
-
-        self.redo_stack = []
-   
-
-    
-    
-    def dummy_function(self, event, x, y, flags, param):
-        pass
-
-
-    def show_image(self): 
-        """
-        Shows the image, also resizes it to a specific size and also moves it to a specific place on the screen
-
-        *** An issue I ran into is that when creating a new opencv2 window, it creates the window somewhere (previous position of the last opened cv2 window ?)
-        *** THEN moves the window to the specified location. This creates an undesired flickering effect.
-        """
-        global window_width_change, window_height_change
-        
-        if not any(value is None for value in self.window_info.values()):
-            
-           
-            if pwc.getWindowsWithTitle(self.cv2_img.name):
-                window = pwc.getWindowsWithTitle(self.cv2_img.name)[0]
-                x, y = window.left, window.top
-                
-                window_width, window_height = window.width, window.height
-                if not self.established:
-
-                    window_width_change = window.width - 720
-                    window_height_change = window.height - 540
-                    self.established = True
-              
-                window_width -= window_width_change
-                window_height -= window_height_change
-                self.window_info = {}
-                self.window_info["img_name"] = self.cv2_img.name
-                self.window_info["coordinates"] = (x, y)
-                self.window_info["dimensions"] = (window_width, window_height)
-            else:
-                x, y = self.window_info["coordinates"]
-                window_width, window_height = self.window_info["dimensions"]
-        else:
-            if pwc.getWindowsWithTitle(self.cv2_img.name):
-                window = pwc.getWindowsWithTitle(self.cv2_img.name)[0]
-                x, y = window.left, window.top
-
-                window_width, window_height = window.width, window.height
-        
-            else:
-                x, y = self.screen_center_x, self.screen_center_y
-    
-               
-                window_width, window_height = 720, 540
-          
-
-        flag = False
-        
-        if self.window_info["img_name"] != self.cv2_img.name:
-            
-            self.window_info = {}
-            self.window_info["img_name"] = self.cv2_img.name
-            self.window_info["coordinates"] = (x, y)
-            self.window_info["dimensions"] = (window_width, window_height)
-            flag = True
-        cv2.namedWindow(self.cv2_img.name, cv2.WINDOW_NORMAL)  
-
-
-        if flag:
-            cv2.resizeWindow(self.cv2_img.name, (1, 1))
-            cv2.moveWindow(self.cv2_img.name, -5000, -5000)
-        cv2.resizeWindow(self.cv2_img.name, (window_width, window_height))  
-        cv2.moveWindow(self.cv2_img.name, x, y)
-        self.pyqt_window.move_to_coordinates(x - 200, y)
-    
-
-        if self.text_to_write:
-            cv2.putText(self.cv2_img.get_image(), self.text_to_write, (int(self.cv2_img.width * 0.05), self.cv2_img.height - int(self.cv2_img.height * 0.05) - self.textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
-
-        cv2.putText(self.cv2_img.get_image(), f"Model: {self.model_detecting}", (int(self.cv2_img.width * 0.75), self.cv2_img.height - int(self.cv2_img.height * 0.05) - self.textSizeHeight), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
-        
-        cv2.imshow(self.cv2_img.name, self.cv2_img.get_image())
-        cv2.setWindowProperty(self.cv2_img.name, cv2.WND_PROP_TOPMOST, 1)
-    
-
-
-    @staticmethod
-    def move_to(window_name, x, y):
-        """
-        Move a OpenCV window to a specific position on the screen.
-
-        Params:
-            window_name (str): The name of the window to move
-            x (int): The x-coordinate of the new position
-            y (int): The y-coordinate of the new position
-        """
-        cv2.moveWindow(window_name, x, y)
-
-
-    def handle_prev_img(self):
-        """
-        Handle navigation to the previous image in the sequence
-        """
-        self.bbox_mode = False
-        self.pose_mode = False
-        self.editing_mode = False
-        self.already_passed = True
-        self.click_count = 0
-
-
-        if self.img_num == 0:
-            self.img_num -= 1
-            cv2.destroyAllWindows()
-            return
-
-        self.img_num -= 1 
-        while self.img_num < len(self.imgs):
-            img_path = os.path.join(self.current_dir, self.imgs[self.img_num])
-            img_name = os.path.basename(img_path)
-            if int(((img_name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip != 0:
-
-                if self.img_num > 0:
-                    self.img_num -= 1 
-        
-            else:
-                self.img_num -= 1
-                cv2.destroyAllWindows() 
-                return
-
-
-    @staticmethod
-    def get_id(annotation_files, video_manager, data_type):    
-        """
-        Generate a unique id
-
-        Params:
-            annotation_files (list): list of annotation files
-            video_manager (VideoManager): Instance of VideoManager class to retrieve the video_dir
-            data_type (str): type of data to get ids (images or annotations)
-
-        Returns:
-            id (int): unique id 
-        """
-
-        id_set = set()
-        for annotation_file in annotation_files:
   
-            with open(os.path.join(video_manager.video_dir, annotation_file), 'r') as f:
-                data_file = json.load(f)
-            id_set.update(data["id"] for data in data_file[data_type])
-        id = 0
-        while id in id_set:
-            id += 1
-        return id
 
-
-    def drawing_annotations(self):
-        """
-        Draw annotations on the current image from the .json files
-        """
-
-        annotation_types = ["bbox", "pose"]
-
-        for annotation_file in self.annotation_files:
-            with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
-        
-                annotations = json.load(f)
-            
-            for annotation in annotations["annotations"]:
-                if annotation["image_id"] == self.img_id:
-            
-                    if annotation["type"].split()[-1] == "bounding_box":
-                   
-                        corner_points = [(annotation["bbox"][0], annotation["bbox"][1]), (annotation["bbox"][2], annotation["bbox"][1]), (annotation["bbox"][0], annotation["bbox"][3]), (annotation["bbox"][2], annotation["bbox"][3])]
-                        for corner_x, corner_y in corner_points:
-                            cv2.rectangle(self.cv2_img.get_image(), (corner_x - self.corner_size//2 , corner_y - self.corner_size//2), (corner_x + self.corner_size//2, corner_y + self.corner_size//2), self.annotation_colors[annotation["object_id"]], 2)
-                        cv2.rectangle(self.cv2_img.get_image(), (annotation["bbox"][0], annotation["bbox"][1]), (annotation["bbox"][2], annotation["bbox"][3]), self.annotation_colors[annotation["object_id"]], 2)
-                        cv2.putText(self.cv2_img.get_image(), str(annotation["object_id"]), (annotation["bbox"][2] - 20, annotation["bbox"][3] - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
-                        if annotation["type"] == "detected bounding_box":
-                            cv2.putText(self.cv2_img.get_image(), f"{annotation['conf']:.2f}", (annotation["bbox"][0], annotation["bbox"][3]), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
-               
-                    elif annotation["type"] == "pose":
-                        for keypoint_annotation in annotation["keypoints"]: 
-                    
-                            if keypoint_annotation[1][0] != None or keypoint_annotation[1][1] != None:
-                                cv2.circle(self.cv2_img.get_image(), (keypoint_annotation[1][0], keypoint_annotation[1][1]), 5, self.annotation_colors[annotation["object_id"]], -1)
-                                cv2.putText(self.cv2_img.get_image(), keypoint_annotation[0].capitalize(), (keypoint_annotation[1][0], keypoint_annotation[1][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale-0.25, self.font_color, self.font_thickness)
-                        if annotation['keypoints']:
-                            keypoints = {kp[0]: kp[1] for kp in annotation['keypoints']}
-          
-                       
-                            keypoint_pairs = [
-                                ("head", "neck"),
-                                ("neck", "tail"),
-                                ("neck", "l ear"),
-                                ("neck", "r ear"),
-                                ("tail", "l leg"),
-                                ("tail", "r leg")
-                            ]
-
-                            for key1, key2 in keypoint_pairs:
-                                if key1 in keypoints and key2 in keypoints:
-                                    pt1 = tuple(keypoints[key1])
-                                    pt2 = tuple(keypoints[key2])
-                                    cv2.line(self.cv2_img.get_image(), pt1, pt2, self.annotation_colors[annotation["object_id"]], thickness=1)
-
-
-    def editing(self, event, x, y, flags, param):
-        """
-        Handles editing of annotations based on mouse events
-
-        Args:
-            event (int): type of mouse event (cv2.EVENT_LBUTTONDOWN, cv2.EVENT_LBUTTONUP).
-            x (int): x-coordinate of the mouse event
-            y (int): y-coordinate of the mouse event
-            flags (int): flags passed by OpenCV
-            param (any): additional parameters (not used)
-
-        Global Variables:
-            move_top_left (bool): indicates if the top-left corner of a bounding box is being moved
-            move_top_right (bool): indicates if the top-right corner of a bounding box is being moved
-            move_bottom_right (bool): indicates if the bottom-right corner of a bounding box is being moved
-            move_bottom_left (bool): indicates if the bottom-left corner of a bounding box is being moved
-            move_pose_point (bool): indicates if a pose keypoint is being moved
-            file_to_dump (str): file to update with new annotation data
-            moved (bool): indicates if an annotation has been moved
-        """
-
-        global move_top_left, move_top_right, move_bottom_right, move_bottom_left, move_pose_point, file_to_dump, moved
-        if event == cv2.EVENT_LBUTTONDOWN:
-            self.temp_bbox_coords = None
-            breakout = False
-            if self.click_count == 0:
-                for annotation_file in self.annotation_files:
-                    if breakout:
-                        break
-                    with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
-                        data = json.load(f)
-
-                    img_id = next((img_data["id"] for img_data in data["images"] if img_data["file_name"] == self.cv2_img.path), None)
-                    if img_id is None:
-                        continue
-
-                    for annotation_data in data["annotations"]:
-                        if annotation_data["image_id"] != img_id:
-                            continue
-
-                        if annotation_data["type"] == "pose":
-                            if len(annotation_data["keypoints"]) == 0:
-                                continue
-
-                            self.temp_keypoints = annotation_data["keypoints"]
-                            for keypoint in self.temp_keypoints:
-                        
-                                if abs(keypoint[1][0] - x) < 7.5 and abs(keypoint[1][1] - y) < 7.5:
-                                    
-                                    self.keypoint_type = keypoint[0]
-                                    self.keypoint_value = keypoint[1]
-                                    self.annotation_manager.id = annotation_data["id"]
-                                    move_pose_point = True
-                                    move_top_left = move_top_right = move_bottom_left = move_bottom_right = False
-                                    breakout = True
-                                    break
-                            else:
-                                self.keypoint_type = self.keypoint_value = None
-                                move_pose_point = False
-                        else:
-                            corners = {
-                                "top_left": (annotation_data["bbox"][0], annotation_data["bbox"][1]),
-                                "top_right": (annotation_data["bbox"][2], annotation_data["bbox"][1]),
-                                "bottom_left": (annotation_data["bbox"][0], annotation_data["bbox"][3]),
-                                "bottom_right": (annotation_data["bbox"][2], annotation_data["bbox"][3])
-                            }
-
-                            for corner, coord in corners.items():
-                                if abs(coord[0] - x) < self.corner_size and abs(coord[1] - y) < self.corner_size:
-                                    self.annotation_manager.id = annotation_data["id"]
-                                    move_top_left = corner == "top_left"
-                                    move_top_right = corner == "top_right"
-                                    move_bottom_left = corner == "bottom_left"
-                                    move_bottom_right = corner == "bottom_right"
-                                    move_pose_point = False
-                                    self.temp_bbox_coords = annotation_data["bbox"]
-                                    breakout = True
-                                    break
-                            else:
-                                move_top_left = move_top_right = move_bottom_left = move_bottom_right = move_pose_point = False
-
-                        if breakout:
-                            break
-                moved = False
-                self.click_count += 1
-            
-        elif event == cv2.EVENT_LBUTTONUP:
-            self.click_count = 0
-            if moved:
-           
-                if move_pose_point:
-                    for i, keypoint in enumerate(self.temp_keypoints):
-                        if keypoint[0] == self.keypoint_type and keypoint[1] == self.keypoint_value:
-                            self.temp_keypoints[i][1] = (x, y)
-                    info = {
-                        "images": {
-                            "id": self.img_id,
-                            "file_name": self.cv2_img.path,
-                            "image_height": self.cv2_img.height,
-                            "image_width": self.cv2_img.width
-                        },
-                        "annotation": {
-                            "id": self.annotation_manager.id,
-                            "keypoints": self.temp_keypoints,
-                            "image_id": self.img_id,
-                            "object_id": self.object_id,
-                            "iscrowd": 0,
-                            "type": "pose",
-                            "conf": 1,
-                            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        }
-                    }
-                    self.annotation_manager.save_to_json(info, "pose")
-                    self.drawing_annotations()
-                    self.show_image()
-                else:
-                
-                    if self.temp_bbox_coords != None:
-
-                        x1, y1, x2, y2 = self.temp_bbox_coords
-                        if move_top_left:
-                            x1, y1 = x, y
-                        elif move_top_right:
-                            x2, y1 = x, y
-                        elif move_bottom_left:
-                            x1, y2 = x, y
-                        elif move_bottom_right:
-                            x2, y2 = x, y
-
-                        x1, y1 = max(0, min(x1, self.cv2_img.width)), max(0, min(y1, self.cv2_img.height))
-                        x2, y2 = max(0, min(x2, self.cv2_img.width)), max(0, min(y2, self.cv2_img.height))
-
-                        if x1 > x2:
-                            x1, x2 = x2, x1
-                        if y1 > y2:
-                            y1, y2 = y2, y1
-
-                        info = {
-                            "images": {
-                                "id": self.img_id,
-                                "file_name": self.cv2_img.path,
-                                "image_height": self.cv2_img.height,
-                                "image_width": self.cv2_img.width
-                            },
-                            "annotation": {
-                                "id": self.annotation_manager.id,
-                                "bbox": [x1, y1, x2, y2],
-                                "image_id": self.img_id,
-                                "object_id": self.object_id,
-                                "iscrowd": 0,
-                                "area": (x2 - x1) * (y2 - y1),
-                                "type": self.bbox_type + " bounding_box",
-                                "is_hidden": self.is_hidden,
-                                "conf": 1,
-                                "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                            }
-                        }
-                
-                        cv2.rectangle(self.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.object_id], 2)
-                        self.annotation_manager.save_to_json(info, "bbox")
-                
-                        self.drawing_annotations()
-                        self.show_image()
-
-        elif self.click_count == 1:
-            moved = True
-            if move_top_left or move_top_right or move_bottom_left or move_bottom_right or move_pose_point:
-                self.cv2_img.set_image()
-                for annotation_file in self.annotation_files:
-                    with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
-                        data = json.load(f)
-
-                    for i, annotation_data in enumerate(data["annotations"]):
-                        if annotation_data["id"] == self.annotation_manager.id:
-                            self.img_id = annotation_data["image_id"]
-                            self.object_id = annotation_data["object_id"]
-                            self.annotation_manager.id = annotation_data["id"]
-
-                            if annotation_data["type"] == "pose":
-                                self.temp_keypoints = annotation_data["keypoints"]
-                            else:
-                                self.temp_bbox_coords = annotation_data["bbox"]
-                                self.bbox_type = annotation_data["type"].split()[0]
-                                if self.bbox_type == "detected":
-                                    self.bbox_type = "normal"
-                                self.is_hidden = annotation_data["is_hidden"]
-
-                            file_to_dump = annotation_file
-                            del data["annotations"][i]
-                            with open(os.path.join(self.video_manager.video_dir, file_to_dump), 'w') as f:
-                                json.dump(data, f, indent=4)
-                            break
-
-                self.drawing_annotations()
-
-                if move_pose_point:
-                    for keypoint in self.temp_keypoints:
-                        if keypoint[0] != self.keypoint_type or keypoint[1] != self.keypoint_value:
-                            cv2.circle(self.cv2_img.get_image(), (keypoint[1][0], keypoint[1][1]), 5, self.annotation_colors[self.object_id], -1)
-                            cv2.putText(self.cv2_img.get_image(), keypoint[0].capitalize(), (keypoint[1][0], keypoint[1][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale - 0.25, self.font_color, self.font_thickness)
-                    if self.keypoint_type is not None and self.keypoint_value is not None:
-                        cv2.circle(self.cv2_img.get_image(), (x, y), 5, self.annotation_colors[self.object_id], -1)
-                        cv2.putText(self.cv2_img.get_image(), self.keypoint_type.capitalize(), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale - 0.25, self.font_color, self.font_thickness)
-                else:
-                    x1, y1, x2, y2 = self.temp_bbox_coords
-                    if move_top_left:
-                        x1, y1 = x, y
-                    elif move_top_right:
-                        x2, y1 = x, y
-                    elif move_bottom_left:
-                        x1, y2 = x, y
-                    elif move_bottom_right:
-                        x2, y2 = x, y
-
-                    corner_points = [(x1, y1), (x2, y1), (x1, y2), (x2, y2)]
-                    for corner_x, corner_y in corner_points:
-                        cv2.rectangle(self.cv2_img.get_image(), (corner_x - self.corner_size // 2, corner_y - self.corner_size // 2), (corner_x + self.corner_size // 2, corner_y + self.corner_size // 2), self.annotation_colors[self.object_id], 2)
-                    cv2.rectangle(self.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.object_id], 2)
-                    temp_x = max(x1, x2)
-                    temp_y = max(y1, y2)
-                    cv2.putText(self.cv2_img.get_image(), str(self.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
-
-                self.show_image()
-
-
-        
-
-    def drawing_bbox(self, event, x, y, flags, param):
-        """
-        Handle drawing of bounding boxes based on mouse events.
-
-        Args:
-            event (int): type of mouse event (cv2.EVENT_LBUTTONDOWN, cv2.EVENT_LBUTTONUP).
-            x (int): x-coordinate of the mouse event
-            y (int): y-coordinate of the mouse event
-            flags (int): relevant flags passed by OpenCV.
-            param (any): additional parameters (not used)
-
-        Global Variables:
-            start_x (int): x-coordinate where the bounding box drawing starts
-            start_y (int): y-coordinate where the bounding box drawing starts
-            end_x (int): x-coordinate where the bounding box drawing ends
-            end_y (int): y-coordinate where the bounding box drawing ends
-        """
-
-        global start_x, start_y, end_x, end_y
-        
+        self.annotations_exists = False
+        self.is_prev_img = False
+        self.current_dir_num = 0
+        self.image_dir = None
+        self.redo_stack = []
+        self.prev_img_annotations = False
     
-
-        if self.click_count == 1:
-            self.cv2_img.set_image()
-            self.drawing_annotations()
-        
-            image = self.cv2_img.get_image()
-            cv2.rectangle(image, (start_x, start_y), (x, y), self.annotation_colors[self.object_id], 2)
-
-            if self.is_hidden == 1:
-                self.text_to_write = f"Bounding Box Mode - Hidden - {self.object_id}"
-            else:
-                if self.bbox_type == "feces":
-                    self.text_to_write = "Bounding Box Mode - Feces"
-                else:
-                    self.text_to_write = f"Bounding Box Mode - {self.object_id}"
-                    
-            cv2.putText(image, str(self.object_id), (max(start_x, x) - 20, max(start_y, y) - 5), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_color, self.font_thickness)
-            self.show_image()
-            
-        if event == cv2.EVENT_LBUTTONDOWN:
-            self.redo_stack = []
-            if self.click_count == 0:
-            
-                start_x = max(0, min(x, self.cv2_img.width))  
-                start_y = max(0, min(y, self.cv2_img.height))   
-                self.click_count += 1
-
-        elif event == cv2.EVENT_LBUTTONUP:
-            self.annotation_manager.id = self.get_id(self.annotation_files, self.video_manager, "annotations")
-            self.img_id = None
-            for annotation_file in self.annotation_files:
-                with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
-                    data = json.load(f)
-
-                
-                    break_loop = False
-                    for image_data in data["images"]:
-                        if image_data["file_name"] == self.cv2_img.path:
-                
-                            self.img_id = image_data["id"]
-                            break_loop = True
-                            break
-                    if break_loop:
-                        break
-            if self.img_id == None:
-                self.img_id = self.get_id(self.annotation_files, self.video_manager, "images")
-            end_x, end_y = x, y
-            self.click_count = 0
-                  
-            end_x = max(0, min(end_x, self.cv2_img.width))
-            end_y = max(0, min(end_y, self.cv2_img.height))
-            if end_x < start_x:
-                start_x, end_x = end_x, start_x
-
-            if end_y < start_y:
-                start_y, end_y = end_y, start_y
-
-            info = {
-                "images": {
-                "id": self.img_id,
-                "file_name": self.cv2_img.path,
-                "image_height": self.cv2_img.height,
-                "image_width": self.cv2_img.width
-                },
-                "annotation": {
-                    "id": self.annotation_manager.id,
-                    "bbox": [start_x, start_y, end_x, end_y],
-                    "image_id":self.img_id,
-                    "object_id":self.object_id,
-                    "iscrowd": 0,
-                    "area": (end_x - start_x) * (end_y - start_y),
-                    "type": self.bbox_type + " " + "bounding_box",
-                    "is_hidden": self.is_hidden,
-                    "conf": 1,
-                    "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    
-                }
-            }
-
-            corner_points = [(start_x, start_y), (end_x, start_y), (start_x, end_y), (end_x, end_y)]
-
-        
-            for corner_x, corner_y in corner_points:
-                cv2.rectangle(self.cv2_img.get_image(), (corner_x - self.corner_size//2 , corner_y - self.corner_size//2), (corner_x + self.corner_size//2, corner_y + self.corner_size//2), self.annotation_colors[self.object_id], 2)
-                
-            
-            cv2.rectangle(self.cv2_img.get_image(), (start_x, start_y), (end_x, end_y), self.annotation_colors[self.object_id], 2)
-            
-            self.show_image()
-            self.annotation_manager.save_to_json(info, "bbox")
-
-
-    def drawing_pose(self, event, x, y, flags, param):
-        """
-        Handle drawing of pose keypoints based on mouse events.
-
-        Args:
-            event (int): type of mouse event (cv2.EVENT_LBUTTONDOWN)
-            x (int): x-coordinate of the mouse event
-            y (int): y-coordinate of the mouse event
-            flags (int): relevant flags passed by OpenCV
-            param (any): additional parameters (not used)
-        """
-
-        with open(os.path.join(self.video_manager.video_dir, "pose_annotations.json"), 'r') as f:
-            data = json.load(f)
-
-        if event == cv2.EVENT_LBUTTONDOWN:
-            self.redo_stack = []
-            point = (x, y)
-            cv2.circle(self.cv2_img.get_image(), (point[0], point[1]), 5, self.annotation_colors[self.object_id], -1)
-
-            cv2.putText(self.cv2_img.get_image(), self.pose_type.capitalize(), (point[0], point[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.font_scale - 0.25, self.font_color, self.font_thickness)
-            to_append = (self.pose_type, (point))    
-            for annotation in data["annotations"]:
-                if annotation["id"] == self.annotation_manager.id:
-                    annotation["keypoints"].append(to_append)
-                    annotation["time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    break
-                
-            with open(os.path.join(self.video_manager.video_dir, "pose_annotations.json"), 'w') as f:
-                json.dump(data, f, indent = 4)
-       
-            self.drawing_annotations()
-           
-            self.show_image()
-
-
     
-
-    def update_img_with_id(self):
-        # reread the image but with a new object id and the same bbox titles as before 
-        if self.bbox_mode == True:
-            self.cv2_img.set_image()
-        
-            self.drawing_annotations()
-            if self.is_hidden == 1:
-                self.text_to_write = f"Bounding Box Mode - Hidden - {self.object_id}"
-            elif self.bbox_type == "feces":
-                self.text_to_write = f"Bounding Box Mode - Feces"
-            elif self.bbox_type == "normal":
-                self.text_to_write = f"Bounding Box Mode - {self.object_id}"
-            
-
-            self.show_image()
-
-        # initialize a new pose annotation when a new object id is created 
-        elif self.pose_mode == True:
-        
-            self.cv2_img.set_image()
-            self.drawing_annotations()
-
-            pose_mode_text = f"Pose Mode - {self.object_id}"
-            if self.pose_type:
-                pose_mode_text = f"Pose Mode - {self.pose_type.capitalize()} - {self.object_id}"
-                self.annotation_manager.id = self.get_id(self.annotation_files, self.video_manager, "annotations")
-                info = {
-                    "images": {
-                        "id": self.img_id,
-                        "file_name": self.cv2_img.path,
-                        "image_height": self.cv2_img.height,
-                        "image_width": self.cv2_img.width
-                    },
-                    "annotation": {
-                        "id": self.annotation_manager.id,
-                        "keypoints": [],
-                        "image_id": self.img_id,
-                        "object_id": self.object_id,
-                        "iscrowd": 0,
-                        "type": "pose",
-                        "conf": 1,
-                        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    }
-                }
-                self.annotation_manager.save_to_json(info, "pose")
-
-            self.text_to_write = pose_mode_text
-            self.show_image()
-            
 
     def annotating(self):
         """
@@ -742,34 +46,35 @@ class AnnotationTool():
         """
         
 
-        self.cv2_img.set_image()
-        self.bbox_mode = False
-        self.pose_mode = False
-        self.object_id = 1
-        self.is_detected = False
-        self.is_hidden = 0
-        self.img_id = None
-        self.click_count = 0
-        self.annotation_manager.cleaning()
+        self.drawing_tool.image_handler.cv2_img.set_image()
 
+        self.drawing_tool.image_handler.bbox_mode = False
+        self.drawing_tool.image_handler.pose_mode = False
+        self.drawing_tool.image_handler.editing_mode = False
+
+        self.drawing_tool.image_handler.object_id = 1
+        self.is_detected = False
+        self.drawing_tool.image_handler.is_hidden = 0
+        self.drawing_tool.image_handler.img_id = None
+        self.drawing_tool.click_count = 0
         self.prev_img_annotations = False
         for annotation_file in self.annotation_files:
 
-            with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
+            with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
                 data = json.load(f)
 
                 for image_data in data["images"]:
-                    if image_data["file_name"] == self.cv2_img.path:
-                        self.img_id = image_data["id"]
+                    if image_data["file_name"] == self.drawing_tool.image_handler.cv2_img.path:
+                        self.drawing_tool.image_handler.img_id = image_data["id"]
 
-        if self.img_id == None:
-            self.img_id = self.get_id(self.annotation_files, self.video_manager, "images")
+        if self.drawing_tool.image_handler.img_id == None:
+            self.drawing_tool.image_handler.img_id = self.image_handler.get_id(self.annotation_files, self.drawing_tool.image_handler.video_manager, "images")
        
-        with open(os.path.join(self.video_manager.video_dir, "bbox_annotations.json"), 'r') as f:
+        with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, "bbox_annotations.json"), 'r') as f:
             data = json.load(f)
 
             for annotation in data["annotations"]:
-                if annotation["image_id"] == self.img_id:
+                if annotation["image_id"] == self.drawing_tool.image_handler.img_id:
                     if annotation["type"] == "detected bounding_box":
                         self.is_detected = True
                         break
@@ -777,41 +82,38 @@ class AnnotationTool():
 
             if self.is_detected == False and self.model_manager.model_path != "" and self.model_manager.model_path != None and not isinstance(self.model_manager.model_path, tuple) and self.model_detecting == "On":
                 
-                self.model_manager.img = self.cv2_img
-                self.model_manager.img_path = self.cv2_img.path
-                self.model_manager.img_width = self.cv2_img.width
-                self.model_manager.img_height = self.cv2_img.height
-                self.model_manager.img_id = self.img_id
-                self.model_manager.object_id = self.object_id
+                self.model_manager.img = self.drawing_tool.image_handler.cv2_img
+                self.model_manager.img_path = self.drawing_tool.image_handler.cv2_img.path
+                self.model_manager.img_width = self.drawing_tool.image_handler.cv2_img.width
+                self.model_manager.img_height = self.drawing_tool.image_handler.cv2_img.height
+                self.model_manager.img_id = self.drawing_tool.image_handler.img_id
+                self.model_manager.object_id = self.drawing_tool.image_handler.object_id
                 self.model_manager.annotation_manager = self.annotation_manager
             
              
                 self.model_manager.predicting()
+              
             self.annotation_manager.cleaning()
-            if not self.prev_img:
-                
+            if not self.is_prev_img:
 
-                
-                
                 for annotation_file in self.annotation_files:
-                    breakout = False
-                    with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
+                    with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
                         data = json.load(f)
                     self.prev_img_annotations = False
 
                     if data["images"]:
-                        img_index = self.cv2_img.path.rfind('_img_') + 5  
-                        jpg_index = self.cv2_img.path.rfind('.jpg')
+                        img_index = self.drawing_tool.image_handler.cv2_img.path.rfind('_img_') + 5  
+                        jpg_index = self.drawing_tool.image_handler.cv2_img.path.rfind('.jpg')
 
                     
                         if img_index != -1 and jpg_index != -1:
                 
-                            number_str = self.cv2_img.path[img_index:jpg_index]
+                            number_str = self.drawing_tool.image_handler.cv2_img.path[img_index:jpg_index]
                             number = int(number_str)
 
-                            new_filename = self.cv2_img.path[:img_index] + f'{number - self.frame_skip:05d}' + self.cv2_img.path[jpg_index:]
-                           
-                       
+                            new_filename = self.drawing_tool.image_handler.cv2_img.path[:img_index] + f'{number - self.frame_skip:05d}' + self.drawing_tool.image_handler.cv2_img.path[jpg_index:]
+                            
+                        
                             
                             for image_data in data["images"]:
                                 
@@ -824,25 +126,15 @@ class AnnotationTool():
                                 continue
 
 
-
-
                         for annotation_data in data["annotations"]:
-                          
-                            if self.img_id == annotation_data["image_id"]:
-                            
-                                breakout = True
+                            if self.drawing_tool.image_handler.img_id == annotation_data["image_id"]:
                                 break
-                        if breakout:
-                            continue
-
-                        for annotation_data in data["annotations"]:
                             if prev_img_id == annotation_data["image_id"]:
-                              
                                 if annotation_data["type"] == "normal bounding_box":
                                     info = {
-                                        "id": self.get_id(self.annotation_files, self.video_manager, "annotations"), 
+                                        "id": self.image_handler.get_id(self.annotation_files, self.drawing_tool.image_handler.video_manager, "annotations"), 
                                         "bbox": annotation_data["bbox"],
-                                        "image_id": self.img_id,
+                                        "image_id": self.drawing_tool.image_handler.img_id,
                                         "object_id": annotation_data["object_id"],
                                         "iscrowd": annotation_data["iscrowd"],
                                         "area": annotation_data["area"],
@@ -856,16 +148,16 @@ class AnnotationTool():
                                 elif annotation_data["type"] == "pose":
                                     
                                     info = {
-                                        "id": self.get_id(self.annotation_files, self.video_manager, "annotations"),
+                                        "id": self.image_handler.get_id(self.annotation_files, self.drawing_tool.image_handler.video_manager, "annotations"),
                                         "keypoints": annotation_data["keypoints"],
-                                        "image_id": self.img_id,
+                                        "image_id": self.drawing_tool.image_handler.img_id,
                                         "object_id": annotation_data["object_id"],
                                         "iscrowd": annotation_data["iscrowd"],
                                         "type": annotation_data["type"],
                                         "conf": 1,
                                         "time": (datetime.now() - timedelta(seconds=1)).strftime("%Y-%m-%d %H:%M:%S")
                                     }
-                              
+                                
                                 if info:
                                     info_copy = copy.deepcopy(info)
                                 
@@ -884,32 +176,35 @@ class AnnotationTool():
                                     if not found_annotation:
                                         data["annotations"].append(info)
 
-                                if not any(image["id"] == self.img_id for image in data["images"]):
+                                if not any(image["id"] == self.drawing_tool.image_handler.img_id for image in data["images"]):
                                     new_image_info = {
-                                        "id": self.img_id,
-                                        "file_name": self.cv2_img.path,
-                                        "image_height": self.cv2_img.height,
-                                        "image_width": self.cv2_img.width
+                                        "id": self.drawing_tool.image_handler.img_id,
+                                        "file_name": self.drawing_tool.image_handler.cv2_img.path,
+                                        "image_height": self.drawing_tool.image_handler.cv2_img.height,
+                                        "image_width": self.drawing_tool.image_handler.cv2_img.width
                                     }
                                     data["images"].append(new_image_info)
 
-                            
-                                with open(os.path.join(self.video_manager.video_dir, annotation_file), 'w') as f:
+
+                                with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'w') as f:
                                     
                                     json.dump(data, f, indent=4)
-                           
-            self.drawing_annotations()
-            self.text_to_write = None 
-            self.show_image()
+            
+            self.drawing_tool.drawing_annotations()
 
-            self.pyqt_window.window_name = self.cv2_img.name
+       
+            self.drawing_tool.image_handler.text_to_write = None
+          
+            self.drawing_tool.image_handler.show_image()
+
+            self.pyqt_window.window_name = self.drawing_tool.image_handler.cv2_img.name
 
 
             while True:
                 key = cv2.waitKey(1)
              
     
-                if key == 27 or cv2.getWindowProperty(self.cv2_img.name, cv2.WND_PROP_VISIBLE) < 1: # "Escape": Exits the program 
+                if key == 27 or cv2.getWindowProperty(self.drawing_tool.image_handler.cv2_img.name, cv2.WND_PROP_VISIBLE) < 1: # "Escape": Exits the program 
                     self.annotation_manager.cleaning()
                 
 
@@ -921,25 +216,29 @@ class AnnotationTool():
                         self.pyqt_window.button_states["editing"] = False
                         
                         
-                    if self.editing_mode == False:
-                        self.editing_mode = True
-                        self.click_count = 0
-                        self.cv2_img.set_image()
-                        self.drawing_annotations()
-                        self.text_to_write = "Editing"
-                        self.show_image()
-                        self.pose_mode = False
-                        self.bbox_mode = False
+                    if self.drawing_tool.image_handler.editing_mode == False:
+                    
+                        self.drawing_tool.image_handler.editing_mode = True
+                        self.drawing_tool.click_count = 0
+                        self.drawing_tool.image_handler.cv2_img.set_image()
+                        self.drawing_tool.drawing_annotations()
+                        
+                        self.drawing_tool.image_handler.text_to_write = "Editing"
+                        self.drawing_tool.image_handler.show_image()
+                        self.drawing_tool.image_handler.pose_mode = False
+                        self.drawing_tool.image_handler.bbox_mode = False
 
-                        cv2.setMouseCallback(self.cv2_img.name, self.editing)
+                        cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.editing)
 
                     else:
-                        self.editing_mode = False
-                        self.text_to_write = None
-                        self.cv2_img.set_image()
-                        self.drawing_annotations()
-                        self.show_image()
-                        cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
+            
+                        self.drawing_tool.image_handler.editing_mode = False
+             
+                        self.drawing_tool.image_handler.text_to_write = None
+                        self.drawing_tool.cv2_img.set_image()
+                        self.drawing_tool.drawing_annotations()
+                        self.drawing_tool.image_handler.show_image()
+                        cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.dummy_function)
 
                 elif key == ord('r') or self.pyqt_window.button_states["retrain"]:
                     if self.pyqt_window.button_states["retrain"]:
@@ -952,7 +251,7 @@ class AnnotationTool():
                     if self.pyqt_window.button_states["make video"]:
                         self.pyqt_window.button_states["make video"] = False
                     
-                    self.video_manager.make_video()
+                    self.drawing_tool.image_handler.video_manager.make_video()
 
                 elif (key == ord('m') or self.pyqt_window.button_states["toggle model"]) and self.model_manager.model_path != None: # "M": Turns model detection on or off, as shown on the image
           
@@ -960,51 +259,58 @@ class AnnotationTool():
                         self.pyqt_window.button_states["toggle model"] = False
                    
 
-                    
-                    self.cv2_img.set_image()
+             
+                    self.drawing_tool.image_handler.cv2_img.set_image()
                     self.model_detecting = "Off" if self.model_detecting == "On" else "On"
-                    self.drawing_annotations()
-                    self.show_image()
+                    self.drawing_tool.image_handler.model_detecting = "Off" if self.model_detecting == "On" else "On"
+                    self.image_handler.model_detecting = "Off" if self.model_detecting == "On" else "On"
+                    self.drawing_tool.drawing_annotations()
+                    self.drawing_tool.image_handler.show_image()
 
 
-
-
-                    
                 elif key == ord('j') or self.pyqt_window.button_states["decrement id"]: # "J": Previous object ID
                     if self.pyqt_window.button_states["decrement id"]:
                         self.pyqt_window.button_states["decrement id"]
                         
 
 
-                    
-                    self.object_id -= 1 if self.object_id > 1 else 0 
-                    self.update_img_with_id()
+               
+                    self.drawing_tool.image_handler.object_id -= 1 if self.drawing_tool.image_handler.object_id > 1 else 0 
+                    self.drawing_tool.update_img_with_id()
                 
 
                 elif key == ord('b') or self.pyqt_window.button_states["bounding box"]: # bbox mode
                     self.prev_img_annotations = True
+                 
                     if self.pyqt_window.button_states["bounding box"]: 
                         self.pyqt_window.button_states["bounding box"] = False  # Reset the button state after processing it once
                     
-                    if not self.bbox_mode: 
-                        self.bbox_mode = True
-                        self.click_count = 0
-                        self.text_to_write = f"Bounding Box Mode - {self.object_id}"
-                        self.pose_mode = False
-                        self.editing_mode = False
-                        self.bbox_type = "normal"
-                        cv2.setMouseCallback(self.cv2_img.name, self.drawing_bbox)  # Enable mouse callback for keypoint placement
+                    if not self.drawing_tool.image_handler.bbox_mode: 
+                    
+                        self.drawing_tool.image_handler.bbox_mode = True
+                        self.drawing_tool.click_count = 0
+
+                        self.drawing_tool.image_handler.text_to_write = f"Bounding Box Mode - {self.drawing_tool.image_handler.object_id}"
+                        self.drawing_tool.image_handler.pose_mode = False
+                        self.drawing_tool.image_handler.editing_mode = False
+                  
+                        self.drawing_tool.image_handler.bbox_type = "normal"
+                        cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.drawing_bbox)  # Enable mouse callback for keypoint placement
             
                     else:
-                        self.bbox_mode = False
-                        self.bbox_type = "normal"
-                        self.is_hidden = 0 
-                        self.text_to_write = None
-                        cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
+                        
+                        self.drawing_tool.image_handler.bbox_mode = False
+                   
+                        self.drawing_tool.image_handler.bbox_type = "normal"
+                        self.drawing_tool.image_handler.is_hidden = 0 
+     
+                        self.drawing_tool.image_handler.text_to_write = None
+                        cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.dummy_function)
 
-                    self.cv2_img.set_image()
-                    self.drawing_annotations()
-                    self.show_image()
+                    self.drawing_tool.image_handler.cv2_img.set_image()
+                    self.drawing_tool.drawing_annotations()
+     
+                    self.drawing_tool.image_handler.show_image()
                 
                 elif key == ord('p') or self.pyqt_window.button_states["pose"]: # pose mode
                     self.prev_img_annotations = True
@@ -1012,32 +318,32 @@ class AnnotationTool():
                         self.pyqt_window.button_states["pose"] = False
                         
 
-                    if self.pose_mode == False:
-                        self.pose_mode = True
-                        self.click_count = 0
-                        self.cv2_img.set_image()
-                        self.drawing_annotations()
-                        self.text_to_write = f"Pose Mode - {self.object_id}"
-                        
-                        self.show_image()
-                    
-                        self.bbox_mode = False
-                        self.editing_mode = False
-                        self.pose_type = ""
-                        self.annotation_manager.id = self.get_id(self.annotation_files, self.video_manager, "annotations")
+                    if self.drawing_tool.image_handler.pose_mode == False:
+                      
+                        self.drawing_tool.image_handler.pose_mode = True
+                        self.drawing_tool.click_count = 0
+                        self.drawing_tool.image_handler.cv2_img.set_image()
+                        self.drawing_tool.drawing_annotations()
+
+                        self.drawing_tool.image_handler.text_to_write = f"Pose Mode - {self.drawing_tool.image_handler.object_id}"
+                        self.drawing_tool.image_handler.show_image()
+                        self.drawing_tool.image_handler.bbox_mode = False
+                        self.drawing_tool.image_handler.editing_mode = False
+                        self.drawing_tool.image_handler.pose_type = ""
+                        self.annotation_manager.id = self.image_handler.get_id(self.annotation_files, self.drawing_tool.image_handler.video_manager, "annotations")
             
                         info = {
                             "images": {
-                                "id": self.img_id,
-                                "file_name": self.cv2_img.path,
-                                "image_height": self.cv2_img.height,
-                                "image_width": self.cv2_img.width
+                                "id": self.drawing_tool.image_handler.img_id,
+                                "file_name": self.drawing_tool.image_handler.cv2_img.path,
+                                "image_height": self.drawing_tool.image_handler.cv2_img.height,
+                                "image_width": self.drawing_tool.image_handler.cv2_img.width
                             },
                             "annotation": {
                                 "id": self.annotation_manager.id,
                                 "keypoints": [],
-                                "image_id":self.img_id,
-                                "object_id":self.object_id,
+                                "image_id":self.drawing_tool.image_handler.img_id,
+                                "object_id":self.drawing_tool.image_handler.object_id,
                                 "iscrowd": 0,
                                 "type": "pose",
                                 "conf": 1,
@@ -1045,37 +351,51 @@ class AnnotationTool():
                             }
                         }
                         self.annotation_manager.save_to_json(info, "pose")
-                        cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
+                        cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.dummy_function)
                     else:
-                        self.text_to_write = None
-                        self.pose_mode = False
-                        self.cv2_img.set_image()
-                        self.drawing_annotations()
-                        self.show_image()
-                        cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
+                    
+           
+                        self.drawing_tool.image_handler.text_to_write = None
+                        self.drawing_tool.pose_mode = False
+                       
+                        self.drawing_tool.image_handler.cv2_img.set_image()
+                        self.drawing_tool.drawing_annotations()
+                        self.drawing_tool.image_handler.show_image()
+                        cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.dummy_function)
 
                 elif self.pyqt_window.cluster_button == True:
                     self.current_dir_num = self.pyqt_window.cluster_num
                     
-                    self.pose_mode = False
-                    self.bbox_mode = False
-                    self.editing_mode = False 
-                    self.already_passed = False
-                    self.object_id = 1
+         
+                    self.drawing_tool.image_handler.pose_mode = False
+            
+                    self.drawing_tool.image_handler.bbox_mode = False
+                 
+                    self.drawing_tool.image_handler.editing_mode = False
+                 
+                    self.is_passed = False
+                  
+                    self.drawing_tool.image_handler.object_id = 1
                     cv2.destroyAllWindows()
                     return
 
                 elif self.pyqt_window.moved == True:
 
-                    self.img_num = self.pyqt_window.img_num
+               
+                    self.drawing_tool.image_handler.img_num = self.pyqt_window.img_num
                     self.pyqt_window.moved = False
-                    self.pose_mode = False
-                    self.bbox_mode = False
-                    self.editing_mode = False
-                    self.already_passed = False
-                    self.object_id = 1
-                    self.drawing_annotations()
-                    self.show_image()
+               
+                    self.drawing_tool.image_handler.pose_mode = False
+                   
+                    self.drawing_tool.image_handler.bbox_mode = False
+             
+                    self.drawing_tool.image_handler.editing_mode = False
+                
+                    self.is_passed = False
+               
+                    self.drawing_tool.image_handler.object_id = 1
+                    self.drawing_tool.drawing_annotations()
+                    self.drawing_tool.image_handler.show_image()
 
                     cv2.destroyAllWindows()
                     return
@@ -1088,55 +408,63 @@ class AnnotationTool():
                         self.pyqt_window.button_states["next image"] = False
                         
 
-                    # self.pose_mode = False
-                    # self.bbox_mode = False
-                    # self.editing_mode = False
-                    self.already_passed = False
-                    self.object_id = 1
-                    self.show_image()
+              
+                    self.is_passed = False
+                    self.drawing_tool.image_handler.object_id = 1
+                    self.drawing_tool.image_handler.show_image()
                     cv2.destroyAllWindows()
-                    self.pyqt_window.scroll_bar.setValue(self.img_num)
+                    self.pyqt_window.scroll_bar.setValue(self.drawing_tool.image_handler.img_num)
+             
                     self.pyqt_window.moved = False
-                    self.prev_img = False
+                    self.is_prev_img = False
                     return
 
-                elif key == 8 or self.pyqt_window.button_states["previous image"]:
+                elif key == 8 or self.pyqt_window.button_states["previous image"]: # backspace; prev_img 
                     self.redo_stack = []
                     if self.pyqt_window.button_states["previous image"]:
-                        self.pyqt_window.button_states["previous image"] = False # backspace; prev_img 
-                    self.show_image()
-                    self.handle_prev_img()
-                    self.pyqt_window.scroll_bar.setValue(self.img_num)
+                        self.pyqt_window.button_states["previous image"] = False 
+
+                    self.drawing_tool.image_handler.show_image()
+                    self.drawing_tool.image_handler.handle_prev_img()
+               
+                    self.is_passed = True
+                    self.drawing_tool.click_count = 0
+                    self.pyqt_window.scroll_bar.setValue(self.drawing_tool.image_handler.img_num)
                     self.pyqt_window.moved = False
+
                     self.result = False
-                    self.prev_img = True
+                    self.is_prev_img = True
                     return
 
                 elif key == ord('d') or self.pyqt_window.button_states["delete"]: # delete all annotations for an image
-                    
+           
                     if self.pyqt_window.button_states["delete"]:
                         self.pyqt_window.button_states["delete"] = False
                         
                     for annotation_file in self.annotation_files:
-                        with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
+                        with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
                             data = json.load(f)
                         
                             for annotation in data["annotations"]:
-                                if annotation["image_id"] == self.img_id:
+                                if annotation["image_id"] == self.drawing_tool.image_handler.img_id:
                                     self.redo_stack.append(annotation)
-                        data["annotations"] = [annotation for annotation in data["annotations"] if annotation["image_id"] != self.img_id]
+                        data["annotations"] = [annotation for annotation in data["annotations"] if annotation["image_id"] != self.drawing_tool.image_handler.img_id]
             
-                        with open(os.path.join(self.video_manager.video_dir, annotation_file), 'w') as f:
+                        with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'w') as f:
                             json.dump(data, f, indent=4)
 
-                    self.cv2_img.set_image()
-                    self.text_to_write = None
-                    self.show_image()
-                    cv2.setMouseCallback(self.cv2_img.name, self.dummy_function)
-                    self.bbox_mode = False
-                    self.pose_mode = False
-                    self.editing_mode = False
-                    self.object_id = 1
+                
+                    self.drawing_tool.image_handler.cv2_img.set_image()
+                    
+               
+                    self.drawing_tool.image_handler.text_to_write = None
+                    self.drawing_tool.image_handler.show_image()
+                    cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.dummy_function)
+                   
+                    self.drawing_tool.image_handler.bbox_mode = False
+                    self.drawing_tool.image_handler.pose_mode = False
+                    self.drawing_tool.image_handler.editing_mode = False
+                    self.drawing_tool.image_handler.object_id = 1
                     self.annotation_manager.cleaning()
                 elif key == 89 or self.pyqt_window.button_states["redo"]: # no code for ctrl + y, pressing "y" == 86; redo
                     if self.pyqt_window.button_states["redo"]:
@@ -1149,15 +477,15 @@ class AnnotationTool():
                         
                             info["time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                            
-                            with open(os.path.join(self.video_manager.video_dir, "bbox_annotations.json"), 'r') as f:
+                            with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, "bbox_annotations.json"), 'r') as f:
                                 data = json.load(f)
                             
                             data["annotations"].append(info)
-                            with open(os.path.join(self.video_manager.video_dir, "bbox_annotations.json"), 'w') as f:
+                            with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, "bbox_annotations.json"), 'w') as f:
                                 json.dump(data, f, indent=4)
 
                         else:
-                            with open(os.path.join(self.video_manager.video_dir, "pose_annotations.json"), 'r') as f:
+                            with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, "pose_annotations.json"), 'r') as f:
                                 data = json.load(f)
 
                             for i in range(len(data["annotations"])):
@@ -1166,11 +494,11 @@ class AnnotationTool():
                                     data["annotations"][i]["keypoints"].append((info['pos'], info['coords']))
                             
                   
-                            with open(os.path.join(self.video_manager.video_dir, "pose_annotations.json"), 'w') as f:
+                            with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, "pose_annotations.json"), 'w') as f:
                                 json.dump(data, f, indent=4)
 
-                        self.drawing_annotations()
-                        self.show_image()
+                        self.drawing_tool.drawing_annotations()
+                        self.drawing_tool.image_handler.show_image()
                    
                 elif key == 26 or self.pyqt_window.button_states["undo"]: # ctrl + z; undo
                     if self.pyqt_window.button_states["undo"]:
@@ -1180,41 +508,47 @@ class AnnotationTool():
                     is_empty = True
 
                     for annotation_file in self.annotation_files:
-                        with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
+                        with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
                             data = json.load(f)
             
-                        if any(annotation["image_id"] == self.img_id for annotation in data["annotations"]):
+                        if any(annotation["image_id"] == self.drawing_tool.image_handler.img_id for annotation in data["annotations"]):
                             is_empty = False
                             break
                     
                     if is_empty:
-                        self.show_image()
-                        self.handle_prev_img()
-                        self.object_id = 1
+                        self.drawing_tool.image_handler.show_image()
+             
+                        self.is_passed = True
+                        self.drawing_tool.click_count = 0
+                        self.drawing_tool.image_handler.handle_prev_img()
+                  
+                       
+                        self.drawing_tool.image_handler.object_id = 1
                         return
 
                     else:
                         latest_time = None
                     
                     for annotation_file in self.annotation_files:
-                        with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
+                        with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
                             data = json.load(f)
                         
                         for i, annotation in enumerate(data["annotations"]):
-                            if annotation["image_id"] == self.img_id:
+                            if annotation["image_id"] == self.drawing_tool.image_handler.img_id:
                                 timestamp = datetime.strptime(annotation["time"], "%Y-%m-%d %H:%M:%S")
                                 if latest_time is None or timestamp > latest_time:
                                     latest_time = timestamp
 
             
                     for annotation_file in self.annotation_files:
-                        with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
+                        with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
                             data = json.load(f)
                         
                         for i in range(len(data["annotations"])):
                             timestamp = datetime.strptime(data["annotations"][i]["time"], "%Y-%m-%d %H:%M:%S")
                             if timestamp == latest_time:
-                                self.object_id = data["annotations"][i]["object_id"]
+                                self.drawing_tool.image_handler.object_id = data["annotations"][i]["object_id"]
+                             
                                 if data["annotations"][i]["type"] == "pose":
                                     if len(data["annotations"][i]["keypoints"]) != 0:
                                         keypoints_pop = data["annotations"][i]["keypoints"].pop()
@@ -1230,43 +564,50 @@ class AnnotationTool():
                                     del data["annotations"][i]
                                 break
                         
-                        with open(os.path.join(self.video_manager.video_dir, annotation_file), 'w') as f:
+                        with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'w') as f:
                             json.dump(data, f, indent=4)
-                    self.cv2_img.set_image()
-                    self.drawing_annotations()
+            
+                    self.drawing_tool.image_handler.cv2_img.set_image()
+                    self.drawing_tool.drawing_annotations()
                     # rewriting the previous titles after deletion
                     mode_text = ""
-                    if self.bbox_mode:
+                    if self.drawing_tool.image_handler.bbox_mode:
                         mode_text = "Bounding Box Mode - "
-                        if self.is_hidden:
+                        if self.drawing_tool.image_handler.is_hidden:
                             mode_text += "Hidden - "
-                        elif self.bbox_type == "feces":
+                        elif self.drawing_tool.image_handler.bbox_type == "feces":
                             mode_text += "Feces - "
-                        mode_text += str(self.object_id)
-                    elif self.pose_mode:
+                      
+                        mode_text += str(self.drawing_tool.image_handler.object_id)
+                
+                    elif self.drawing_tool.image_handler.pose_mode:
                         mode_text = "Pose Mode - "
-                        if self.pose_type:
-                            mode_text += f"{self.pose_type.capitalize()} - "
-                        mode_text += str(self.object_id)
+                        if self.drawing_tool.image_handler.pose_type:
+                            mode_text += f"{self.drawing_tool.image_handler.pose_type.capitalize()} - "
+                 
+                        mode_text += str(self.drawing_tool.image_handler.object_id)
 
                 
-                    self.already_passed = False
-                    self.drawing_annotations()
-                    self.text_to_write = mode_text
-                    self.show_image()
+                   
+                    self.is_passed = False
+                    self.drawing_tool.drawing_annotations()
+                    
+             
+                    self.drawing_tool.image_handler.text_to_write = mode_text
+                    self.drawing_tool.image_handler.show_image()
                  
                 elif key == ord('n') or self.pyqt_window.button_states["increment id"]: # next mouse ID
                     if self.pyqt_window.button_states["increment id"]:
                         self.pyqt_window.button_states["increment id"] = False
               
-                    self.object_id += 1
-
-                    self.update_img_with_id()
+           
+                    self.drawing_tool.image_handler.object_id += 1
+                    self.drawing_tool.update_img_with_id()
                     
 
 
 
-                if self.bbox_mode:
+                if self.drawing_tool.image_handler.bbox_mode:
          
                    
                     bbox_options = {
@@ -1276,18 +617,21 @@ class AnnotationTool():
 
                     for keybind, (bbox_label, mode_message) in bbox_options.items():
                         if key == keybind:
-                            self.cv2_img.set_image()
-                            self.drawing_annotations()
-                            self.text_to_write = f"Bounding Box Mode - {mode_message} - {self.object_id}"
+                         
+                            self.drawing_tool.image_handler.cv2_img.set_image()
+                            self.drawing_tool.drawing_annotations()
+                  
+            
+                            self.drawing_tool.image_handler.text_to_write = f"Bounding Box Mode - {mode_message} - {self.drawing_tool.image_handler.object_id}"
                             
-                            self.show_image()
-                        
-                            self.is_hidden = 1 if bbox_label == "normal" else 0
-                            self.bbox_type = bbox_label.lower()
-                            cv2.setMouseCallback(self.cv2_img.name, self.drawing_bbox)
+                            self.drawing_tool.image_handler.show_image() 
+                            self.drawing_tool.image_handler.is_hidden = 1 if bbox_label == "normal" else 0
+                           
+                            self.drawing_tool.image_handler.bbox_type = bbox_label.lower()
+                            cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.drawing_bbox)
                     
 
-                elif self.pose_mode:
+                elif self.drawing_tool.image_handler.pose_mode:
 
                     pose_options = {
                     ord('1'): ("Head"),
@@ -1303,19 +647,25 @@ class AnnotationTool():
                         if key == keybind or (self.pyqt_window.button_states[p_label.lower()]):
                             if self.pyqt_window.button_states[p_label.lower()]:
                                 self.pyqt_window.button_states[p_label.lower()] = False
-                            self.cv2_img.set_image()
-                            self.drawing_annotations()
-                            self.text_to_write = f"Pose Mode - {p_label} - {self.object_id}"
-                            
-                            self.show_image()
-                            self.pose_type = p_label.lower()
-                            cv2.setMouseCallback(self.cv2_img.name, self.drawing_pose)
+                           
+                            self.drawing_tool.image_handler.cv2_img.set_image()
+                            self.drawing_tool.drawing_annotations()
+                      
+                        
+                       
+                            self.drawing_tool.image_handler.text_to_write = f"Pose Mode - {p_label} - {self.drawing_tool.image_handler.object_id}"
+                            self.drawing_tool.image_handler.show_image()
+                            self.drawing_tool.image_handler.pose_type = p_label.lower()
+                            cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.drawing_pose)
                 
 
 
     def run_tool(self):
       
         app = QApplication(sys.argv) 
+        self.drawing_tool = DrawingTool()
+        self.image_handler = ImageHandler()
+        self.drawing_tool.image_handler = ImageHandler()
         
         self.model_manager = ModelManager()
         parser = argparse.ArgumentParser()
@@ -1324,47 +674,60 @@ class AnnotationTool():
         parser.add_argument("--clustering", type=bool, default=False, help="True/False to turn on/off clustering of chosen dataset")
         args = parser.parse_args()
         self.frame_skip = args.frame_skip
+        self.drawing_tool.image_handler.frame_skip = self.frame_skip
        
         self.model_manager.model_path = args.model_path
 
         self.annotation_files = ["bbox_annotations.json", "pose_annotations.json"]
         self.model_manager.annotation_files = self.annotation_files
-    
      
         
         screen = screeninfo.get_monitors()[0]  # [0] -> primary monitor
         width, height = screen.width, screen.height
-        self.screen_center_x = int((width - 700) / 2)
-        self.screen_center_y = int((height - 500)/ 2)
-
+        
+        self.image_handler.screen_center_x = int((width - 700) / 2)
+  
+        self.image_handler.screen_center_y = int((height - 500)/ 2)
+        self.drawing_tool.image_handler.screen_center_x = int((width - 700) / 2)
+        self.drawing_tool.image_handler.screen_center_y = int((height - 500)/ 2)
         # creating a list of random annotation colors that are the same throughout different runs 
         seed = 41
         random.seed(seed)
+        self.drawing_tool.annotation_colors = []
         for _ in range(30):
             r = random.randint(0, 255)
             g = random.randint(0, 255)
             b = random.randint(0, 255)
 
             color = (r, g, b)
-            self.annotation_colors.append(color)
+            self.drawing_tool.annotation_colors.append(color)
 
-        self.window_info = {"img_name": None, "coordinates": None, "dimensions": None}
+    
+        self.drawing_tool.image_handler.window_info = {"img_name": None, "coordinates": None, "dimensions": None}
+        self.drawing_tool.image_handler.is_change_set = False
+        self.drawing_tool.image_handler.text_to_write = None
+    
 
-        textSize, baseline = cv2.getTextSize("test", cv2.FONT_HERSHEY_SIMPLEX, self.font_scale, self.font_thickness)
-        textSizeWidth, self.textSizeHeight = textSize
+ 
 
-        self.video_manager = VideoManager(self.frame_skip, self.annotation_colors, self.annotation_files)
-      
-        video_name = self.video_manager.extract_frames()
+        
+        textSize, baseline = cv2.getTextSize("test", cv2.FONT_HERSHEY_SIMPLEX, self.drawing_tool.image_handler.font_scale, self.drawing_tool.image_handler.font_thickness)
+        textSizeWidth, self.drawing_tool.image_handler.textSizeHeight = textSize
+       
+    
+        self.drawing_tool.image_handler.video_manager = VideoManager(self.frame_skip, self.drawing_tool.annotation_colors, self.annotation_files)
+    
+        video_name = self.drawing_tool.image_handler.video_manager.extract_frames()
+        
         self.image_dir = "used_videos/" + video_name.split(".")[0] + "/extracted_frames/"
 
 
         # initialize the json files in the respective video directory
         for annotation_file in self.annotation_files:
-            if not os.path.exists(os.path.join(self.video_manager.video_dir, annotation_file)):
+            if not os.path.exists(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file)):
                 json_content = {"images": [], "annotations": []}
                 
-                with open(os.path.join(self.video_manager.video_dir, annotation_file), 'w') as f:
+                with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'w') as f:
                     json.dump(json_content, f, indent=4)
         dir_list = None
    
@@ -1380,9 +743,11 @@ class AnnotationTool():
             self.model_manager.model = YOLO(self.model_manager.model_path)
             self.model_manager.model.to(device)
             
-            self.model_manager.video_manager = self.video_manager
+            self.model_manager.video_manager = self.drawing_tool.image_handler.video_manager
             self.model_manager.predict_all(self.image_dir)
             self.model_detecting = "On"
+            self.drawing_tool.image_handler.model_detecting = "On"
+            self.image_handler.model_detecting = "On"
 
             #comment the below code to turn off/on clustering 
             if args.clustering:
@@ -1395,14 +760,19 @@ class AnnotationTool():
                     shutil.rmtree(self.image_dir, ignore_errors=True)
         else:
             dir_list = None
+           
             self.model_detecting = "Off"
-        self.already_passed = False
-        self.object_id = 1
-        self.annotations_exists = False
+            self.drawing_tool.image_handler.model_detecting = "Off"
+            self.image_handler.model_detecting = "Off"
+       
+        self.is_passed = False
+  
+        self.drawing_tool.image_handler.object_id = 1
+        
         
 
         for annotation_file in self.annotation_files:
-            with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
+            with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
                 data = json.load(f)
 
             if data["annotations"]:
@@ -1426,65 +796,73 @@ class AnnotationTool():
                 self.result = False
             
 
-        self.img_num = 0
-
+     
+        self.drawing_tool.image_handler.img_num = 0
         # directory list will be the list of clusters if a model is chosen, or a list of extracted frames
         directories = [self.image_dir] if not dir_list else dir_list
-        self.annotation_manager = AnnotationManager(self.video_manager.video_dir, self.annotation_files)
+        self.annotation_manager = AnnotationManager(self.drawing_tool.image_handler.video_manager.video_dir, self.annotation_files)
+        self.drawing_tool.annotation_manager = self.annotation_manager
+        self.drawing_tool.image_handler.annotation_manager = self.annotation_manager
         self.pyqt_window = MainWindow()
+        self.drawing_tool.image_handler.pyqt_window = self.pyqt_window
+        self.drawing_tool.image_handler.pyqt_window.show()
         self.pyqt_window.setWindowFlags(Qt.WindowStaysOnTopHint)
         
         self.pyqt_window.show()
+
         l = 0 
         while self.current_dir_num < len(directories):
-            self.current_dir = directories[self.current_dir_num]
-            self.imgs = os.listdir(self.current_dir)
-            self.pyqt_window.img_list = self.imgs
+            
+            self.drawing_tool.image_handler.current_dir = directories[self.current_dir_num]
+          
+            self.drawing_tool.image_handler.imgs = os.listdir(self.drawing_tool.image_handler.current_dir)
+            self.pyqt_window.img_list = self.drawing_tool.image_handler.imgs
             if l == 0:
                 if len(directories) > 1:
                     self.pyqt_window.cluster_count = len(directories)
                 self.pyqt_window.initialize()
                 l += 1
 
-        #for i, self.current_dir in enumerate(directories):
-            
-            # if i == 0:
-            #     self.pyqt_window.initialize()
-            self.pyqt_window.scroll_bar.setValue(self.img_num)
+
+            self.pyqt_window.scroll_bar.setValue(self.drawing_tool.image_handler.img_num)
+ 
             
 
           
-            with tqdm(total=len(self.imgs), desc=f" {(self.current_dir.split('_')[-1]).replace('/', '')}") as pbar:
+            with tqdm(total=len(self.drawing_tool.image_handler.imgs), desc=f" {(self.drawing_tool.image_handler.current_dir.split('_')[-1]).replace('/', '')}") as pbar:
                 if len(directories) == 1:
 
                     while True:
                         
-                        self.is_hidden = 0
+                        self.drawing_tool.image_handler.is_hidden = 0
                         self.annotations_exists = False
                         annotated_image_ids = set()
-                        self.img_num = int(self.img_num)
-                        imagepath = os.path.join(self.current_dir, self.imgs[int(self.img_num)])
+                       
+                        self.drawing_tool.image_handler.img_num = int(self.drawing_tool.image_handler.img_num)
+                        imagepath = os.path.join(self.drawing_tool.image_handler.current_dir, self.drawing_tool.image_handler.imgs[int(self.drawing_tool.image_handler.img_num)])
                         imagename = os.path.basename(imagepath)
-                        self.cv2_img = CV2Image(imagepath, imagename)
-                        self.pyqt_window.window_name = self.cv2_img.name
+           
+                        self.drawing_tool.image_handler.cv2_img = CV2Image(imagepath, imagename)
+                        self.drawing_tool.image_handler.video_manager.cv2_img = self.drawing_tool.image_handler.cv2_img
+                        self.pyqt_window.window_name = self.drawing_tool.image_handler.cv2_img.name
                     
-                        if int(((self.cv2_img.name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
+                        if int(((self.drawing_tool.image_handler.cv2_img.name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
                         
-                            self.cv2_img = CV2Image(imagepath, imagename)
-                    
+                            self.drawing_tool.image_handler.cv2_img = CV2Image(imagepath, imagename)
+                            self.drawing_tool.image_handler.video_manager.cv2_img = self.drawing_tool.image_handler.cv2_img
                             annotated_image_ids = self.annotation_manager.cleaning()
                         
-                            if annotated_image_ids and self.already_passed == False:
+                            if annotated_image_ids and self.is_passed == False:
                                 for annotation_file in self.annotation_files:
                                     
-                                    with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
+                                    with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
                                         data = json.load(f)
 
                                     if len(data["images"]) == 0:
                                         continue
 
                                     for image_data in data["images"]:
-                                        if image_data["file_name"] == self.cv2_img.path:
+                                        if image_data["file_name"] == self.drawing_tool.image_handler.cv2_img.path:
                                             if image_data["id"] in annotated_image_ids:
                                                 self.annotations_exists = True
                                                 continue
@@ -1495,41 +873,49 @@ class AnnotationTool():
                                 if self.result == False:
                                     self.annotating()
                             
-                        if self.img_num != len(self.imgs) - 1:
-                            self.img_num += 1
-                        pbar.n = self.img_num
+                        if self.drawing_tool.image_handler.img_num != len(self.drawing_tool.image_handler.imgs) - 1:
+                         
+                            self.drawing_tool.image_handler.img_num += 1
+                
+                        pbar.n = self.drawing_tool.image_handler.img_num
                         pbar.refresh()
 
                 else:
-                    while self.img_num < len(self.imgs):
+                    while self.drawing_tool.image_handler.img_num < len(self.drawing_tool.image_handler.imgs):
                         
-                        self.is_hidden = 0
+                        self.drawing_tool.image_handler.is_hidden = 0
                         self.annotations_exists = False
                         annotated_image_ids = set()
-                        self.img_num = int(self.img_num)
-                        imagepath = os.path.join(self.current_dir, self.imgs[int(self.img_num)])
+                      
+                        self.drawing_tool.image_handler.img_num = int(self.drawing_tool.image_handler.img_num)
+                        imagepath = os.path.join(self.drawing_tool.image_handler.current_dir, self.drawing_tool.image_handler.imgs[int(self.drawing_tool.image_handler.img_num)])
                         imagename = os.path.basename(imagepath)
-                        self.cv2_img = CV2Image(imagepath, imagename)
-                        self.pyqt_window.window_name = self.cv2_img.name
+                        
+             
+                        self.drawing_tool.image_handler.cv2_img = CV2Image(imagepath, imagename)
+                        self.drawing_tool.image_handler.video_manager.cv2_img = self.drawing_tool.image_handler.cv2_img
+                        self.pyqt_window.window_name = self.drawing_tool.cv2_img.name
                         self.pyqt_window.cluster_count = len(directories)
 
-                        if int(((self.cv2_img.name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
+                        if int(((self.drawing_tool.image_handler.cv2_img.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
                         
-                            self.cv2_img = CV2Image(imagepath, imagename)
-                    
+                           
+                           
+                            self.drawing_tool.image_handler.cv2_img = CV2Image(imagepath, imagename) 
+                            self.drawing_tool.image_handler.video_manager.cv2_img = self.drawing_tool.image_handler.cv2_img
                             annotated_image_ids = self.annotation_manager.cleaning()
                         
-                            if annotated_image_ids and self.already_passed == False:
+                            if annotated_image_ids and self.is_passed == False:
                                 for annotation_file in self.annotation_files:
                                     
-                                    with open(os.path.join(self.video_manager.video_dir, annotation_file), 'r') as f:
+                                    with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
                                         data = json.load(f)
 
                                     if len(data["images"]) == 0:
                                         continue
 
                                     for image_data in data["images"]:
-                                        if image_data["file_name"] == self.cv2_img.path:
+                                        if image_data["file_name"] == self.drawing_tool.image_handler.cv2_img.path:
                                             if image_data["id"] in annotated_image_ids:
                                                 self.annotations_exists = True
                                                 continue
@@ -1543,15 +929,22 @@ class AnnotationTool():
                             self.pyqt_window.cluster_button = False
                             break
                             
-                        if self.img_num != len(self.imgs):
-                            self.img_num += 1
-                        pbar.n = self.img_num
+                        if self.drawing_tool.image_handler.img_num != len(self.drawing_tool.image_handler.imgs):
+               
+                            self.drawing_tool.image_handler.img_num += 1 
+           
+                        pbar.n = self.drawing_tool.image_handler.img_num
                         pbar.refresh()
 
               
 
-                self.img_num = 0  # reset img_num for the next directory    
+            # reset img_num for the next directory  
+                self.drawing_tool.image_handler.img_num = 0
             self.current_dir_num += 1
+
+
+
+
 
 if __name__ == "__main__":
   
@@ -1562,13 +955,4 @@ if __name__ == "__main__":
 
     tool.run_tool()
     sys.exit(app.exec_())
-
-
-
-
-
-
-
-
-
 
