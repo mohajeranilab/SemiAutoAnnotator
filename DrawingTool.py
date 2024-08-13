@@ -180,7 +180,7 @@ class DrawingTool():
                             "id": self.annotation_manager.id,
                             "keypoints": self.temp_keypoints,
                             "image_id": self.image_handler.img_id,
-                            "object_id": self.image_handler.object_id,
+                            "object_id": self.object_id,
                             "iscrowd": 0,
                             "type": "pose",
                             "conf": 1,
@@ -224,17 +224,17 @@ class DrawingTool():
                                 "id": self.annotation_manager.id,
                                 "bbox": [x1, y1, x2, y2],
                                 "image_id": self.image_handler.img_id,
-                                "object_id": self.image_handler.object_id,
+                                "object_id": self.object_id,
                                 "iscrowd": 0,
                                 "area": (x2 - x1) * (y2 - y1),
-                                "type": self.image_handler.bbox_type + " bounding_box",
-                                "is_hidden": self.image_handler.is_hidden,
+                                "type": self.bbox_type + " bounding_box",
+                                "is_hidden": self.is_hidden,
                                 "conf": 1,
                                 "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                             }
                         }
                 
-                        cv2.rectangle(self.image_handler.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.image_handler.object_id], 2)
+                        cv2.rectangle(self.image_handler.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.object_id], 2)
                         self.annotation_manager.save_to_json(info, "bbox")
                 
                         self.drawing_annotations()
@@ -253,18 +253,18 @@ class DrawingTool():
                     for i, annotation_data in enumerate(data["annotations"]):
                         if annotation_data["id"] == self.annotation_manager.id:
                             self.image_handler.img_id = annotation_data["image_id"]
-                            self.image_handler.object_id = annotation_data["object_id"]
+                            self.object_id = annotation_data["object_id"]
                             self.annotation_manager.id = annotation_data["id"]
 
                             if annotation_data["type"] == "pose":
                                 self.temp_keypoints = annotation_data["keypoints"]
                             else:
                                 self.temp_bbox_coords = annotation_data["bbox"]
-                                self.image_handler.bbox_type = annotation_data["type"].split()[0]
-                                self.image_handler.bbox_type = annotation_data["type"].split()[0]
-                                if self.image_handler.bbox_type == "detected":
-                                    self.image_handler.bbox_type = "normal"
-                                self.image_handler.is_hidden = annotation_data["is_hidden"]
+                                self.bbox_type = annotation_data["type"].split()[0]
+                        
+                                if self.bbox_type == "detected":
+                                    self.bbox_type = "normal"
+                                self.is_hidden = annotation_data["is_hidden"]
 
                             file_to_dump = annotation_file
                             del data["annotations"][i]
@@ -277,10 +277,10 @@ class DrawingTool():
                 if move_pose_point:
                     for keypoint in self.temp_keypoints:
                         if keypoint[0] != self.keypoint_type or keypoint[1] != self.keypoint_value:
-                            cv2.circle(self.image_handler.cv2_img.get_image(), (keypoint[1][0], keypoint[1][1]), 5, self.annotation_colors[self.image_handler.object_id], -1)
+                            cv2.circle(self.image_handler.cv2_img.get_image(), (keypoint[1][0], keypoint[1][1]), 5, self.annotation_colors[self.object_id], -1)
                             cv2.putText(self.image_handler.cv2_img.get_image(), keypoint[0].capitalize(), (keypoint[1][0], keypoint[1][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale - 0.25, self.image_handler.font_color, self.image_handler.font_thickness)
                     if self.keypoint_type is not None and self.keypoint_value is not None:
-                        cv2.circle(self.image_handler.cv2_img.get_image(), (x, y), 5, self.annotation_colors[self.image_handler.object_id], -1)
+                        cv2.circle(self.image_handler.cv2_img.get_image(), (x, y), 5, self.annotation_colors[self.object_id], -1)
                         cv2.putText(self.image_handler.cv2_img.get_image(), self.keypoint_type.capitalize(), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale - 0.25, self.image_handler.font_color, self.image_handler.font_thickness)
                 else:
                     x1, y1, x2, y2 = self.temp_bbox_coords
@@ -295,11 +295,11 @@ class DrawingTool():
 
                     corner_points = [(x1, y1), (x2, y1), (x1, y2), (x2, y2)]
                     for corner_x, corner_y in corner_points:
-                        cv2.rectangle(self.image_handler.cv2_img.get_image(), (corner_x - self.corner_size // 2, corner_y - self.corner_size // 2), (corner_x + self.corner_size // 2, corner_y + self.corner_size // 2), self.annotation_colors[self.image_handler.object_id], 2)
-                    cv2.rectangle(self.image_handler.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.image_handler.object_id], 2)
+                        cv2.rectangle(self.image_handler.cv2_img.get_image(), (corner_x - self.corner_size // 2, corner_y - self.corner_size // 2), (corner_x + self.corner_size // 2, corner_y + self.corner_size // 2), self.annotation_colors[self.object_id], 2)
+                    cv2.rectangle(self.image_handler.cv2_img.get_image(), (x1, y1), (x2, y2), self.annotation_colors[self.object_id], 2)
                     temp_x = max(x1, x2)
                     temp_y = max(y1, y2)
-                    cv2.putText(self.image_handler.cv2_img.get_image(), str(self.image_handler.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale, self.image_handler.font_color, self.image_handler.font_thickness)
+                    cv2.putText(self.image_handler.cv2_img.get_image(), str(self.object_id), (temp_x - 20, temp_y - 5), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale, self.image_handler.font_color, self.image_handler.font_thickness)
              
                 self.image_handler.show_image()
 
@@ -334,17 +334,17 @@ class DrawingTool():
             self.drawing_annotations()
         
             image = self.image_handler.cv2_img.get_image()
-            cv2.rectangle(image, (start_x, start_y), (x, y), self.annotation_colors[self.image_handler.object_id], 2)
+            cv2.rectangle(image, (start_x, start_y), (x, y), self.annotation_colors[self.object_id], 2)
 
-            if self.image_handler.is_hidden == 1:
-                self.image_handler.text_to_write = f"Bounding Box Mode - Hidden - {self.image_handler.object_id}"
+            if self.is_hidden == 1:
+                self.image_handler.text_to_write = f"Bounding Box Mode - Hidden - {self.object_id}"
             else:
-                if self.image_handler.bbox_type == "feces":
+                if self.bbox_type == "feces":
                     self.image_handler.text_to_write = "Bounding Box Mode - Feces"
                 else:
-                    self.image_handler.text_to_write = f"Bounding Box Mode - {self.image_handler.object_id}"
+                    self.image_handler.text_to_write = f"Bounding Box Mode - {self.object_id}"
                     
-            cv2.putText(image, str(self.image_handler.object_id), (max(start_x, x) - 20, max(start_y, y) - 5), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale, self.image_handler.font_color, self.image_handler.font_thickness)
+            cv2.putText(image, str(self.object_id), (max(start_x, x) - 20, max(start_y, y) - 5), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale, self.image_handler.font_color, self.image_handler.font_thickness)
           
      
             self.image_handler.show_image()
@@ -398,11 +398,11 @@ class DrawingTool():
                     "id": self.annotation_manager.id,
                     "bbox": [start_x, start_y, end_x, end_y],
                     "image_id":self.image_handler.img_id,
-                    "object_id":self.image_handler.object_id,
+                    "object_id":self.object_id,
                     "iscrowd": 0,
                     "area": (end_x - start_x) * (end_y - start_y),
-                    "type": self.image_handler.bbox_type + " " + "bounding_box",
-                    "is_hidden": self.image_handler.is_hidden,
+                    "type": self.bbox_type + " " + "bounding_box",
+                    "is_hidden": self.is_hidden,
                     "conf": 1,
                     "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     
@@ -413,10 +413,10 @@ class DrawingTool():
 
         
             for corner_x, corner_y in corner_points:
-                cv2.rectangle(self.image_handler.cv2_img.get_image(), (corner_x - self.corner_size//2 , corner_y - self.corner_size//2), (corner_x + self.corner_size//2, corner_y + self.corner_size//2), self.annotation_colors[self.image_handler.object_id], 2)
+                cv2.rectangle(self.image_handler.cv2_img.get_image(), (corner_x - self.corner_size//2 , corner_y - self.corner_size//2), (corner_x + self.corner_size//2, corner_y + self.corner_size//2), self.annotation_colors[self.object_id], 2)
                 
             
-            cv2.rectangle(self.image_handler.cv2_img.get_image(), (start_x, start_y), (end_x, end_y), self.annotation_colors[self.image_handler.object_id], 2)
+            cv2.rectangle(self.image_handler.cv2_img.get_image(), (start_x, start_y), (end_x, end_y), self.annotation_colors[self.object_id], 2)
             
           
             self.image_handler.show_image()
@@ -442,7 +442,7 @@ class DrawingTool():
       
            
             point = (x, y)
-            cv2.circle(self.image_handler.cv2_img.get_image(), (point[0], point[1]), 5, self.annotation_colors[self.image_handler.object_id], -1)
+            cv2.circle(self.image_handler.cv2_img.get_image(), (point[0], point[1]), 5, self.annotation_colors[self.object_id], -1)
 
             cv2.putText(self.image_handler.cv2_img.get_image(), self.image_handler.pose_type.capitalize(), (point[0], point[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale - 0.25, self.image_handler.font_color, self.image_handler.font_thickness)
             to_append = (self.image_handler.pose_type, (point))    
@@ -457,4 +457,58 @@ class DrawingTool():
        
             self.drawing_annotations()
 
+            self.image_handler.show_image()
+
+
+    def update_img_with_id(self):
+        # reread the image but with a new object id and the same bbox titles as before 
+ 
+        if self.bbox_mode == True:
+            self.image_handler.cv2_img.set_image()
+        
+     
+            self.drawing_annotations()
+            if self.is_hidden == 1:
+                self.text_to_write = f"Bounding Box Mode - Hidden - {self.object_id}"
+            elif self.bbox_type == "feces":
+                self.text_to_write = f"Bounding Box Mode - Feces"
+            elif self.bbox_type == "normal":
+                self.text_to_write = f"Bounding Box Mode - {self.object_id}"
+            
+        
+            self.image_handler.show_image()
+
+        # initialize a new pose annotation when a new object id is created 
+        elif self.pose_mode == True:
+        
+            self.image_handler.cv2_img.set_image()
+      
+            self.drawing_annotations()
+
+            pose_mode_text = f"Pose Mode - {self.object_id}"
+            if self.pose_type:
+                pose_mode_text = f"Pose Mode - {self.pose_type.capitalize()} - {self.object_id}"
+                self.annotation_manager.id = self.get_id(self.annotation_files, self.video_manager, "annotations")
+                info = {
+                    "images": {
+                        "id": self.img_id,
+                        "file_name": self.image_handler.cv2_img.path,
+                        "image_height": self.image_handler.cv2_img.height,
+                        "image_width": self.image_handler.cv2_img.width
+                    },
+                    "annotation": {
+                        "id": self.annotation_manager.id,
+                        "keypoints": [],
+                        "image_id": self.img_id,
+                        "object_id": self.object_id,
+                        "iscrowd": 0,
+                        "type": "pose",
+                        "conf": 1,
+                        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                }
+                self.annotation_manager.save_to_json(info, "pose")
+
+            self.text_to_write = pose_mode_text
+        
             self.image_handler.show_image()

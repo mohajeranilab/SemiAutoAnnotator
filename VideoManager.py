@@ -88,6 +88,57 @@ class VideoManager():
       
         return video_name
     
+
+    def image_folder_extraction(self):
+        """
+        Extract images from a selected folder for annotation.
+
+        Returns:
+            folder_name (str): Name of the selected folder.
+        """
+        folder_path = QFileDialog.getExistingDirectory(
+            None,
+            "Select Folder",
+            "/",
+            QFileDialog.DirsOnly
+        )
+
+        assert folder_path, "No folder selected."
+
+        # Extracting folder name and creating a directory for the folder
+        folder_name = os.path.basename(folder_path)
+        self.folder_dir = os.path.join("used_folders", folder_name)
+        os.makedirs(self.folder_dir, exist_ok=True)
+
+        # Copying folder to the 'used_folders/{folder_name}/' directory
+        shutil.copytree(folder_path, os.path.join("used_folders", folder_name), dirs_exist_ok=True)
+
+        if not os.path.exists(os.path.join(self.folder_dir, "extracted_images/")):
+            os.makedirs(os.path.join(self.folder_dir, "extracted_images/"))
+
+        # Iterate through the image files in the folder
+        extracted_count = 0
+
+        for root, _, files in os.walk(folder_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+
+                if file.lower().endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):
+                    image = cv2.imread(file_path)
+
+                    if image is not None:
+                        base_name = os.path.splitext(file)[0]
+                        frame_filename = os.path.join(self.folder_dir, "extracted_images/", f"{base_name}.jpg")
+
+                        # Save the image in the 'extracted_images' directory
+                        cv2.imwrite(frame_filename, image)
+                        extracted_count += 1
+
+        print(f"Extracted {extracted_count} images to 'extracted_images'")
+
+        return folder_name
+
+
     def make_video(self):
         """
         Creates a video from the selected frames that have been annotated. An output video will be created 

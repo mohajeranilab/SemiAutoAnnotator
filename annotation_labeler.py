@@ -48,13 +48,13 @@ class AnnotationTool():
 
         self.drawing_tool.image_handler.cv2_img.set_image()
 
-        self.drawing_tool.image_handler.bbox_mode = False
-        self.drawing_tool.image_handler.pose_mode = False
-        self.drawing_tool.image_handler.editing_mode = False
+        self.drawing_tool.bbox_mode = False
+        self.drawing_tool.pose_mode = False
+        self.editing_mode = False
 
-        self.drawing_tool.image_handler.object_id = 1
+        self.drawing_tool.object_id = 1
         self.is_detected = False
-        self.drawing_tool.image_handler.is_hidden = 0
+        self.drawing_tool.is_hidden = 0
         self.drawing_tool.image_handler.img_id = None
         self.drawing_tool.click_count = 0
         self.prev_img_annotations = False
@@ -87,7 +87,7 @@ class AnnotationTool():
                 self.model_manager.img_width = self.drawing_tool.image_handler.cv2_img.width
                 self.model_manager.img_height = self.drawing_tool.image_handler.cv2_img.height
                 self.model_manager.img_id = self.drawing_tool.image_handler.img_id
-                self.model_manager.object_id = self.drawing_tool.image_handler.object_id
+                self.model_manager.object_id = self.drawing_tool.object_id
                 self.model_manager.annotation_manager = self.annotation_manager
             
              
@@ -216,23 +216,23 @@ class AnnotationTool():
                         self.pyqt_window.button_states["editing"] = False
                         
                         
-                    if self.drawing_tool.image_handler.editing_mode == False:
+                    if self.editing_mode == False:
                     
-                        self.drawing_tool.image_handler.editing_mode = True
+                        self.editing_mode = True
                         self.drawing_tool.click_count = 0
                         self.drawing_tool.image_handler.cv2_img.set_image()
                         self.drawing_tool.drawing_annotations()
                         
                         self.drawing_tool.image_handler.text_to_write = "Editing"
                         self.drawing_tool.image_handler.show_image()
-                        self.drawing_tool.image_handler.pose_mode = False
-                        self.drawing_tool.image_handler.bbox_mode = False
+                        self.drawing_tool.pose_mode = False
+                        self.drawing_tool.bbox_mode = False
 
                         cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.editing)
 
                     else:
             
-                        self.drawing_tool.image_handler.editing_mode = False
+                        self.editing_mode = False
              
                         self.drawing_tool.image_handler.text_to_write = None
                         self.drawing_tool.cv2_img.set_image()
@@ -275,7 +275,8 @@ class AnnotationTool():
 
 
                
-                    self.drawing_tool.image_handler.object_id -= 1 if self.drawing_tool.image_handler.object_id > 1 else 0 
+                    self.drawing_tool.object_id -= 1 if self.drawing_tool.object_id > 1 else 0 
+                    self.drawing_tool.image_handler.cv2_img.set_image()
                     self.drawing_tool.update_img_with_id()
                 
 
@@ -285,24 +286,24 @@ class AnnotationTool():
                     if self.pyqt_window.button_states["bounding box"]: 
                         self.pyqt_window.button_states["bounding box"] = False  # Reset the button state after processing it once
                     
-                    if not self.drawing_tool.image_handler.bbox_mode: 
+                    if not self.drawing_tool.bbox_mode: 
                     
-                        self.drawing_tool.image_handler.bbox_mode = True
+                        self.drawing_tool.bbox_mode = True
                         self.drawing_tool.click_count = 0
 
-                        self.drawing_tool.image_handler.text_to_write = f"Bounding Box Mode - {self.drawing_tool.image_handler.object_id}"
-                        self.drawing_tool.image_handler.pose_mode = False
-                        self.drawing_tool.image_handler.editing_mode = False
+                        self.drawing_tool.image_handler.text_to_write = f"Bounding Box Mode - {self.drawing_tool.object_id}"
+                        self.drawing_tool.pose_mode = False
+                        self.editing_mode = False
                   
-                        self.drawing_tool.image_handler.bbox_type = "normal"
+                        self.drawing_tool.bbox_type = "normal"
                         cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.drawing_bbox)  # Enable mouse callback for keypoint placement
             
                     else:
                         
-                        self.drawing_tool.image_handler.bbox_mode = False
+                        self.drawing_tool.bbox_mode = False
                    
-                        self.drawing_tool.image_handler.bbox_type = "normal"
-                        self.drawing_tool.image_handler.is_hidden = 0 
+                        self.drawing_tool.bbox_type = "normal"
+                        self.drawing_tool.is_hidden = 0 
      
                         self.drawing_tool.image_handler.text_to_write = None
                         cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.dummy_function)
@@ -318,17 +319,17 @@ class AnnotationTool():
                         self.pyqt_window.button_states["pose"] = False
                         
 
-                    if self.drawing_tool.image_handler.pose_mode == False:
+                    if self.drawing_tool.pose_mode == False:
                       
-                        self.drawing_tool.image_handler.pose_mode = True
+                        self.drawing_tool.pose_mode = True
                         self.drawing_tool.click_count = 0
                         self.drawing_tool.image_handler.cv2_img.set_image()
                         self.drawing_tool.drawing_annotations()
 
-                        self.drawing_tool.image_handler.text_to_write = f"Pose Mode - {self.drawing_tool.image_handler.object_id}"
+                        self.drawing_tool.image_handler.text_to_write = f"Pose Mode - {self.drawing_tool.object_id}"
                         self.drawing_tool.image_handler.show_image()
-                        self.drawing_tool.image_handler.bbox_mode = False
-                        self.drawing_tool.image_handler.editing_mode = False
+                        self.drawing_tool.bbox_mode = False
+                        self.editing_mode = False
                         self.drawing_tool.image_handler.pose_type = ""
                         self.annotation_manager.id = self.image_handler.get_id(self.annotation_files, self.drawing_tool.image_handler.video_manager, "annotations")
             
@@ -343,7 +344,7 @@ class AnnotationTool():
                                 "id": self.annotation_manager.id,
                                 "keypoints": [],
                                 "image_id":self.drawing_tool.image_handler.img_id,
-                                "object_id":self.drawing_tool.image_handler.object_id,
+                                "object_id":self.drawing_tool.object_id,
                                 "iscrowd": 0,
                                 "type": "pose",
                                 "conf": 1,
@@ -367,15 +368,15 @@ class AnnotationTool():
                     self.current_dir_num = self.pyqt_window.cluster_num
                     
          
-                    self.drawing_tool.image_handler.pose_mode = False
+                    self.drawing_tool.pose_mode = False
             
-                    self.drawing_tool.image_handler.bbox_mode = False
+                    self.drawing_tool.bbox_mode = False
                  
-                    self.drawing_tool.image_handler.editing_mode = False
+                    self.editing_mode = False
                  
                     self.is_passed = False
                   
-                    self.drawing_tool.image_handler.object_id = 1
+                    self.drawing_tool.object_id = 1
                     cv2.destroyAllWindows()
                     return
 
@@ -385,15 +386,15 @@ class AnnotationTool():
                     self.drawing_tool.image_handler.img_num = self.pyqt_window.img_num
                     self.pyqt_window.moved = False
                
-                    self.drawing_tool.image_handler.pose_mode = False
+                    self.drawing_tool.pose_mode = False
                    
-                    self.drawing_tool.image_handler.bbox_mode = False
+                    self.drawing_tool.bbox_mode = False
              
-                    self.drawing_tool.image_handler.editing_mode = False
+                    self.editing_mode = False
                 
                     self.is_passed = False
                
-                    self.drawing_tool.image_handler.object_id = 1
+                    self.drawing_tool.object_id = 1
                     self.drawing_tool.drawing_annotations()
                     self.drawing_tool.image_handler.show_image()
 
@@ -410,7 +411,7 @@ class AnnotationTool():
 
               
                     self.is_passed = False
-                    self.drawing_tool.image_handler.object_id = 1
+                    self.drawing_tool.object_id = 1
                     self.drawing_tool.image_handler.show_image()
                     cv2.destroyAllWindows()
                     self.pyqt_window.scroll_bar.setValue(self.drawing_tool.image_handler.img_num)
@@ -461,10 +462,10 @@ class AnnotationTool():
                     self.drawing_tool.image_handler.show_image()
                     cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.dummy_function)
                    
-                    self.drawing_tool.image_handler.bbox_mode = False
-                    self.drawing_tool.image_handler.pose_mode = False
-                    self.drawing_tool.image_handler.editing_mode = False
-                    self.drawing_tool.image_handler.object_id = 1
+                    self.drawing_tool.bbox_mode = False
+                    self.drawing_tool.pose_mode = False
+                    self.editing_mode = False
+                    self.drawing_tool.object_id = 1
                     self.annotation_manager.cleaning()
                 elif key == 89 or self.pyqt_window.button_states["redo"]: # no code for ctrl + y, pressing "y" == 86; redo
                     if self.pyqt_window.button_states["redo"]:
@@ -523,7 +524,7 @@ class AnnotationTool():
                         self.drawing_tool.image_handler.handle_prev_img()
                   
                        
-                        self.drawing_tool.image_handler.object_id = 1
+                        self.drawing_tool.object_id = 1
                         return
 
                     else:
@@ -547,7 +548,7 @@ class AnnotationTool():
                         for i in range(len(data["annotations"])):
                             timestamp = datetime.strptime(data["annotations"][i]["time"], "%Y-%m-%d %H:%M:%S")
                             if timestamp == latest_time:
-                                self.drawing_tool.image_handler.object_id = data["annotations"][i]["object_id"]
+                                self.drawing_tool.object_id = data["annotations"][i]["object_id"]
                              
                                 if data["annotations"][i]["type"] == "pose":
                                     if len(data["annotations"][i]["keypoints"]) != 0:
@@ -571,21 +572,21 @@ class AnnotationTool():
                     self.drawing_tool.drawing_annotations()
                     # rewriting the previous titles after deletion
                     mode_text = ""
-                    if self.drawing_tool.image_handler.bbox_mode:
+                    if self.drawing_tool.bbox_mode:
                         mode_text = "Bounding Box Mode - "
-                        if self.drawing_tool.image_handler.is_hidden:
+                        if self.drawing_tool.is_hidden:
                             mode_text += "Hidden - "
-                        elif self.drawing_tool.image_handler.bbox_type == "feces":
+                        elif self.drawing_tool.bbox_type == "feces":
                             mode_text += "Feces - "
                       
-                        mode_text += str(self.drawing_tool.image_handler.object_id)
+                        mode_text += str(self.drawing_tool.object_id)
                 
-                    elif self.drawing_tool.image_handler.pose_mode:
+                    elif self.drawing_tool.pose_mode:
                         mode_text = "Pose Mode - "
                         if self.drawing_tool.image_handler.pose_type:
                             mode_text += f"{self.drawing_tool.image_handler.pose_type.capitalize()} - "
                  
-                        mode_text += str(self.drawing_tool.image_handler.object_id)
+                        mode_text += str(self.drawing_tool.object_id)
 
                 
                    
@@ -601,13 +602,14 @@ class AnnotationTool():
                         self.pyqt_window.button_states["increment id"] = False
               
            
-                    self.drawing_tool.image_handler.object_id += 1
+                    self.drawing_tool.object_id += 1
+                    self.drawing_tool.image_handler.cv2_img.set_image()
                     self.drawing_tool.update_img_with_id()
                     
 
 
 
-                if self.drawing_tool.image_handler.bbox_mode:
+                if self.drawing_tool.bbox_mode:
          
                    
                     bbox_options = {
@@ -622,16 +624,16 @@ class AnnotationTool():
                             self.drawing_tool.drawing_annotations()
                   
             
-                            self.drawing_tool.image_handler.text_to_write = f"Bounding Box Mode - {mode_message} - {self.drawing_tool.image_handler.object_id}"
+                            self.drawing_tool.image_handler.text_to_write = f"Bounding Box Mode - {mode_message} - {self.drawing_tool.object_id}"
                             
                             self.drawing_tool.image_handler.show_image() 
-                            self.drawing_tool.image_handler.is_hidden = 1 if bbox_label == "normal" else 0
+                            self.drawing_tool.is_hidden = 1 if bbox_label == "normal" else 0
                            
-                            self.drawing_tool.image_handler.bbox_type = bbox_label.lower()
+                            self.drawing_tool.bbox_type = bbox_label.lower()
                             cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.drawing_bbox)
                     
 
-                elif self.drawing_tool.image_handler.pose_mode:
+                elif self.drawing_tool.pose_mode:
 
                     pose_options = {
                     ord('1'): ("Head"),
@@ -653,7 +655,7 @@ class AnnotationTool():
                       
                         
                        
-                            self.drawing_tool.image_handler.text_to_write = f"Pose Mode - {p_label} - {self.drawing_tool.image_handler.object_id}"
+                            self.drawing_tool.image_handler.text_to_write = f"Pose Mode - {p_label} - {self.drawing_tool.object_id}"
                             self.drawing_tool.image_handler.show_image()
                             self.drawing_tool.image_handler.pose_type = p_label.lower()
                             cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.drawing_pose)
@@ -708,18 +710,58 @@ class AnnotationTool():
         self.drawing_tool.image_handler.text_to_write = None
     
 
- 
 
-        
+
+        self.result = False
+        if self.annotations_exists:
+            msg_box = QMessageBox()
+            msg_box.setIcon(QMessageBox.Question)
+            msg_box.setWindowTitle("Continue to Next Image")
+            msg_box.setText("Do you want to continue your work on the image following the last annotated image?")
+            msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            msg_box.setDefaultButton(QMessageBox.No)
+            
+            self.result = msg_box.exec_()
+
+            if self.result == QMessageBox.Yes:
+                self.result = True
+            else:
+                self.result = False
+
+
+
+
+
         textSize, baseline = cv2.getTextSize("test", cv2.FONT_HERSHEY_SIMPLEX, self.drawing_tool.image_handler.font_scale, self.drawing_tool.image_handler.font_thickness)
         textSizeWidth, self.drawing_tool.image_handler.textSizeHeight = textSize
        
-    
         self.drawing_tool.image_handler.video_manager = VideoManager(self.frame_skip, self.drawing_tool.annotation_colors, self.annotation_files)
-    
-        video_name = self.drawing_tool.image_handler.video_manager.extract_frames()
+
+        file_or_video_box = QMessageBox()
+        file_or_video_box.setIcon(QMessageBox.Question)
+        file_or_video_box.setWindowTitle("Extract frames from a video or select a folder of images")
+        file_or_video_box.setText("Do you want to extract frames from a video, or select a folder of frames?")
         
-        self.image_dir = "used_videos/" + video_name.split(".")[0] + "/extracted_frames/"
+        # Add custom buttons
+        file_button = file_or_video_box.addButton("File", QMessageBox.AcceptRole)
+        folder_button = file_or_video_box.addButton("Folder", QMessageBox.RejectRole)
+        
+        # Execute the message box and get the result
+        file_or_video_box.exec_()
+        
+        # Determine which button was pressed
+        if file_or_video_box.clickedButton() == file_button:
+            image_location_name = self.drawing_tool.image_handler.video_manager.extract_frames()
+        
+        elif file_or_video_box.clickedButton() == folder_button:
+            image_location_name = self.drawing_tool.image_handler.video_manager.image_folder_extraction()
+        
+
+
+    
+    
+        
+        self.image_dir = "used_videos/" + image_location_name.split(".")[0] + "/extracted_frames/"
 
 
         # initialize the json files in the respective video directory
@@ -752,9 +794,9 @@ class AnnotationTool():
             #comment the below code to turn off/on clustering 
             if args.clustering:
                 initialize_clustering((self.image_dir), self.model_manager.model_path, self.frame_skip)
-                dir_list = os.listdir("used_videos/" + video_name.split(".")[0] + "/clusters/")
+                dir_list = os.listdir("used_videos/" + image_location_name.split(".")[0] + "/clusters/")
                 for i, dir in enumerate(dir_list):
-                    dir_list[i] = "used_videos/" + video_name.split(".")[0] + "/clusters/" + dir + "/" 
+                    dir_list[i] = "used_videos/" + image_location_name.split(".")[0] + "/clusters/" + dir + "/" 
                 # delete extracted_frames to save space only if clustering 
                 if dir_list:
                     shutil.rmtree(self.image_dir, ignore_errors=True)
@@ -767,7 +809,7 @@ class AnnotationTool():
        
         self.is_passed = False
   
-        self.drawing_tool.image_handler.object_id = 1
+        self.drawing_tool.object_id = 1
         
         
 
@@ -794,7 +836,7 @@ class AnnotationTool():
                 self.result = True
             else:
                 self.result = False
-            
+
 
      
         self.drawing_tool.image_handler.img_num = 0
@@ -834,7 +876,7 @@ class AnnotationTool():
 
                     while True:
                         
-                        self.drawing_tool.image_handler.is_hidden = 0
+                        self.drawing_tool.is_hidden = 0
                         self.annotations_exists = False
                         annotated_image_ids = set()
                        
@@ -883,7 +925,7 @@ class AnnotationTool():
                 else:
                     while self.drawing_tool.image_handler.img_num < len(self.drawing_tool.image_handler.imgs):
                         
-                        self.drawing_tool.image_handler.is_hidden = 0
+                        self.drawing_tool.is_hidden = 0
                         self.annotations_exists = False
                         annotated_image_ids = set()
                       

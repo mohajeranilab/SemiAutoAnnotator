@@ -17,6 +17,7 @@ import copy
 
 
 
+
 class CV2Image():
     def __init__(self, path, name):
         """
@@ -213,53 +214,4 @@ class ImageHandler():
             id += 1
         return id
     
-    def update_img_with_id(self):
-        # reread the image but with a new object id and the same bbox titles as before 
-        if self.bbox_mode == True:
-            self.cv2_img.set_image()
-        
-            self.drawing_annotations()
-            if self.is_hidden == 1:
-                self.text_to_write = f"Bounding Box Mode - Hidden - {self.object_id}"
-            elif self.bbox_type == "feces":
-                self.text_to_write = f"Bounding Box Mode - Feces"
-            elif self.bbox_type == "normal":
-                self.text_to_write = f"Bounding Box Mode - {self.object_id}"
-            
-        
-            self.show_image()
-
-        # initialize a new pose annotation when a new object id is created 
-        elif self.pose_mode == True:
-        
-            self.cv2_img.set_image()
-            self.drawing_tool = DrawingTool()
-            self.drawing_tool.drawing_annotations()
-
-            pose_mode_text = f"Pose Mode - {self.object_id}"
-            if self.pose_type:
-                pose_mode_text = f"Pose Mode - {self.pose_type.capitalize()} - {self.object_id}"
-                self.annotation_manager.id = self.get_id(self.annotation_files, self.video_manager, "annotations")
-                info = {
-                    "images": {
-                        "id": self.img_id,
-                        "file_name": self.cv2_img.path,
-                        "image_height": self.cv2_img.height,
-                        "image_width": self.cv2_img.width
-                    },
-                    "annotation": {
-                        "id": self.annotation_manager.id,
-                        "keypoints": [],
-                        "image_id": self.img_id,
-                        "object_id": self.object_id,
-                        "iscrowd": 0,
-                        "type": "pose",
-                        "conf": 1,
-                        "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    }
-                }
-                self.annotation_manager.save_to_json(info, "pose")
-
-            self.text_to_write = pose_mode_text
-        
-            self.show_image()
+    
