@@ -61,6 +61,8 @@ class CV2Image():
         
 
 class ImageHandler():
+    """
+    """
     def __init__(self):
         super().__init__()
         self.annotation_files = ["bbox_annotations.json", "pose_annotations.json"]
