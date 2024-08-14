@@ -330,7 +330,7 @@ class AnnotationTool():
                         self.drawing_tool.image_handler.show_image()
                         self.drawing_tool.bbox_mode = False
                         self.editing_mode = False
-                        self.drawing_tool.image_handler.pose_type = ""
+                        self.drawing_tool.pose_type = ""
                         self.annotation_manager.id = self.image_handler.get_id(self.annotation_files, self.drawing_tool.image_handler.video_manager, "annotations")
             
                         info = {
@@ -583,8 +583,8 @@ class AnnotationTool():
                 
                     elif self.drawing_tool.pose_mode:
                         mode_text = "Pose Mode - "
-                        if self.drawing_tool.image_handler.pose_type:
-                            mode_text += f"{self.drawing_tool.image_handler.pose_type.capitalize()} - "
+                        if self.drawing_tool.pose_type:
+                            mode_text += f"{self.drawing_tool.pose_type.capitalize()} - "
                  
                         mode_text += str(self.drawing_tool.object_id)
 
@@ -657,7 +657,7 @@ class AnnotationTool():
                        
                             self.drawing_tool.image_handler.text_to_write = f"Pose Mode - {p_label} - {self.drawing_tool.object_id}"
                             self.drawing_tool.image_handler.show_image()
-                            self.drawing_tool.image_handler.pose_type = p_label.lower()
+                            self.drawing_tool.pose_type = p_label.lower()
                             cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.drawing_pose)
                 
 

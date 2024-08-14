@@ -444,8 +444,8 @@ class DrawingTool():
             point = (x, y)
             cv2.circle(self.image_handler.cv2_img.get_image(), (point[0], point[1]), 5, self.annotation_colors[self.object_id], -1)
 
-            cv2.putText(self.image_handler.cv2_img.get_image(), self.image_handler.pose_type.capitalize(), (point[0], point[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale - 0.25, self.image_handler.font_color, self.image_handler.font_thickness)
-            to_append = (self.image_handler.pose_type, (point))    
+            cv2.putText(self.image_handler.cv2_img.get_image(), self.pose_type.capitalize(), (point[0], point[1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale - 0.25, self.image_handler.font_color, self.image_handler.font_thickness)
+            to_append = (self.pose_type, (point))    
             for annotation in data["annotations"]:
                 if annotation["id"] == self.annotation_manager.id:
                     annotation["keypoints"].append(to_append)
