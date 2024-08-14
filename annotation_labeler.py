@@ -55,7 +55,7 @@ class AnnotationTool():
         self.drawing_tool.object_id = 1
         self.is_detected = False
         self.drawing_tool.is_hidden = 0
-        self.drawing_tool.image_handler.img_id = None
+        self.drawing_tool.img_id = None
         self.drawing_tool.click_count = 0
         self.prev_img_annotations = False
         for annotation_file in self.annotation_files:
@@ -65,16 +65,16 @@ class AnnotationTool():
 
                 for image_data in data["images"]:
                     if image_data["file_name"] == self.drawing_tool.image_handler.cv2_img.path:
-                        self.drawing_tool.image_handler.img_id = image_data["id"]
+                        self.drawing_tool.img_id = image_data["id"]
 
-        if self.drawing_tool.image_handler.img_id == None:
-            self.drawing_tool.image_handler.img_id = self.image_handler.get_id(self.annotation_files, self.drawing_tool.image_handler.video_manager, "images")
+        if self.drawing_tool.img_id == None:
+            self.drawing_tool.img_id = self.image_handler.get_id(self.annotation_files, self.drawing_tool.image_handler.video_manager, "images")
        
         with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, "bbox_annotations.json"), 'r') as f:
             data = json.load(f)
 
             for annotation in data["annotations"]:
-                if annotation["image_id"] == self.drawing_tool.image_handler.img_id:
+                if annotation["image_id"] == self.drawing_tool.img_id:
                     if annotation["type"] == "detected bounding_box":
                         self.is_detected = True
                         break
@@ -86,7 +86,7 @@ class AnnotationTool():
                 self.model_manager.img_path = self.drawing_tool.image_handler.cv2_img.path
                 self.model_manager.img_width = self.drawing_tool.image_handler.cv2_img.width
                 self.model_manager.img_height = self.drawing_tool.image_handler.cv2_img.height
-                self.model_manager.img_id = self.drawing_tool.image_handler.img_id
+                self.model_manager.img_id = self.drawing_tool.img_id
                 self.model_manager.object_id = self.drawing_tool.object_id
                 self.model_manager.annotation_manager = self.annotation_manager
             
@@ -127,14 +127,14 @@ class AnnotationTool():
 
 
                         for annotation_data in data["annotations"]:
-                            if self.drawing_tool.image_handler.img_id == annotation_data["image_id"]:
+                            if self.drawing_tool.img_id == annotation_data["image_id"]:
                                 break
                             if prev_img_id == annotation_data["image_id"]:
                                 if annotation_data["type"] == "normal bounding_box":
                                     info = {
                                         "id": self.image_handler.get_id(self.annotation_files, self.drawing_tool.image_handler.video_manager, "annotations"), 
                                         "bbox": annotation_data["bbox"],
-                                        "image_id": self.drawing_tool.image_handler.img_id,
+                                        "image_id": self.drawing_tool.img_id,
                                         "object_id": annotation_data["object_id"],
                                         "iscrowd": annotation_data["iscrowd"],
                                         "area": annotation_data["area"],
@@ -150,7 +150,7 @@ class AnnotationTool():
                                     info = {
                                         "id": self.image_handler.get_id(self.annotation_files, self.drawing_tool.image_handler.video_manager, "annotations"),
                                         "keypoints": annotation_data["keypoints"],
-                                        "image_id": self.drawing_tool.image_handler.img_id,
+                                        "image_id": self.drawing_tool.img_id,
                                         "object_id": annotation_data["object_id"],
                                         "iscrowd": annotation_data["iscrowd"],
                                         "type": annotation_data["type"],
@@ -176,9 +176,9 @@ class AnnotationTool():
                                     if not found_annotation:
                                         data["annotations"].append(info)
 
-                                if not any(image["id"] == self.drawing_tool.image_handler.img_id for image in data["images"]):
+                                if not any(image["id"] == self.drawing_tool.img_id for image in data["images"]):
                                     new_image_info = {
-                                        "id": self.drawing_tool.image_handler.img_id,
+                                        "id": self.drawing_tool.img_id,
                                         "file_name": self.drawing_tool.image_handler.cv2_img.path,
                                         "image_height": self.drawing_tool.image_handler.cv2_img.height,
                                         "image_width": self.drawing_tool.image_handler.cv2_img.width
@@ -335,7 +335,7 @@ class AnnotationTool():
             
                         info = {
                             "images": {
-                                "id": self.drawing_tool.image_handler.img_id,
+                                "id": self.drawing_tool.img_id,
                                 "file_name": self.drawing_tool.image_handler.cv2_img.path,
                                 "image_height": self.drawing_tool.image_handler.cv2_img.height,
                                 "image_width": self.drawing_tool.image_handler.cv2_img.width
@@ -343,7 +343,7 @@ class AnnotationTool():
                             "annotation": {
                                 "id": self.annotation_manager.id,
                                 "keypoints": [],
-                                "image_id":self.drawing_tool.image_handler.img_id,
+                                "image_id":self.drawing_tool.img_id,
                                 "object_id":self.drawing_tool.object_id,
                                 "iscrowd": 0,
                                 "type": "pose",
@@ -447,9 +447,9 @@ class AnnotationTool():
                             data = json.load(f)
                         
                             for annotation in data["annotations"]:
-                                if annotation["image_id"] == self.drawing_tool.image_handler.img_id:
+                                if annotation["image_id"] == self.drawing_tool.img_id:
                                     self.redo_stack.append(annotation)
-                        data["annotations"] = [annotation for annotation in data["annotations"] if annotation["image_id"] != self.drawing_tool.image_handler.img_id]
+                        data["annotations"] = [annotation for annotation in data["annotations"] if annotation["image_id"] != self.drawing_tool.img_id]
             
                         with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'w') as f:
                             json.dump(data, f, indent=4)
@@ -512,7 +512,7 @@ class AnnotationTool():
                         with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
                             data = json.load(f)
             
-                        if any(annotation["image_id"] == self.drawing_tool.image_handler.img_id for annotation in data["annotations"]):
+                        if any(annotation["image_id"] == self.drawing_tool.img_id for annotation in data["annotations"]):
                             is_empty = False
                             break
                     
@@ -535,7 +535,7 @@ class AnnotationTool():
                             data = json.load(f)
                         
                         for i, annotation in enumerate(data["annotations"]):
-                            if annotation["image_id"] == self.drawing_tool.image_handler.img_id:
+                            if annotation["image_id"] == self.drawing_tool.img_id:
                                 timestamp = datetime.strptime(annotation["time"], "%Y-%m-%d %H:%M:%S")
                                 if latest_time is None or timestamp > latest_time:
                                     latest_time = timestamp

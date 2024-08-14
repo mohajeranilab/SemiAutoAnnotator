@@ -41,7 +41,7 @@ class DrawingTool():
                 annotations = json.load(f)
             
             for annotation in annotations["annotations"]:
-                if annotation["image_id"] == self.image_handler.img_id:
+                if annotation["image_id"] == self.img_id:
             
                     if annotation["type"].split()[-1] == "bounding_box":
                    
@@ -171,7 +171,7 @@ class DrawingTool():
                             self.temp_keypoints[i][1] = (x, y)
                     info = {
                         "images": {
-                            "id": self.image_handler.img_id,
+                            "id": self.img_id,
                             "file_name": self.image_handler.cv2_img.path,
                             "image_height": self.image_handler.cv2_img.height,
                             "image_width": self.image_handler.cv2_img.width
@@ -179,7 +179,7 @@ class DrawingTool():
                         "annotation": {
                             "id": self.annotation_manager.id,
                             "keypoints": self.temp_keypoints,
-                            "image_id": self.image_handler.img_id,
+                            "image_id": self.img_id,
                             "object_id": self.object_id,
                             "iscrowd": 0,
                             "type": "pose",
@@ -215,7 +215,7 @@ class DrawingTool():
 
                         info = {
                             "images": {
-                                "id": self.image_handler.img_id,
+                                "id": self.img_id,
                                 "file_name": self.image_handler.cv2_img.path,
                                 "image_height": self.image_handler.cv2_img.height,
                                 "image_width": self.image_handler.cv2_img.width
@@ -223,7 +223,7 @@ class DrawingTool():
                             "annotation": {
                                 "id": self.annotation_manager.id,
                                 "bbox": [x1, y1, x2, y2],
-                                "image_id": self.image_handler.img_id,
+                                "image_id": self.img_id,
                                 "object_id": self.object_id,
                                 "iscrowd": 0,
                                 "area": (x2 - x1) * (y2 - y1),
@@ -252,7 +252,7 @@ class DrawingTool():
 
                     for i, annotation_data in enumerate(data["annotations"]):
                         if annotation_data["id"] == self.annotation_manager.id:
-                            self.image_handler.img_id = annotation_data["image_id"]
+                            self.img_id = annotation_data["image_id"]
                             self.object_id = annotation_data["object_id"]
                             self.annotation_manager.id = annotation_data["id"]
 
@@ -359,7 +359,7 @@ class DrawingTool():
 
         elif event == cv2.EVENT_LBUTTONUP:
             self.annotation_manager.id = self.image_handler.get_id(self.annotation_files, self.image_handler.video_manager, "annotations")
-            self.image_handler.img_id = None
+            self.img_id = None
             for annotation_file in self.annotation_files:
                 with open(os.path.join(self.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
                     data = json.load(f)
@@ -369,13 +369,13 @@ class DrawingTool():
                     for image_data in data["images"]:
                         if image_data["file_name"] == self.image_handler.cv2_img.path:
                 
-                            self.image_handler.img_id = image_data["id"]
+                            self.img_id = image_data["id"]
                             break_loop = True
                             break
                     if break_loop:
                         break
-            if self.image_handler.img_id == None:
-                self.image_handler.img_id = self.image_handler.get_id(self.annotation_files, self.image_handler.video_manager, "images")
+            if self.img_id == None:
+                self.img_id = self.image_handler.get_id(self.annotation_files, self.image_handler.video_manager, "images")
             end_x, end_y = x, y
             self.click_count = 0
                   
@@ -389,7 +389,7 @@ class DrawingTool():
 
             info = {
                 "images": {
-                "id": self.image_handler.img_id,
+                "id": self.img_id,
                 "file_name": self.image_handler.cv2_img.path,
                 "image_height": self.image_handler.cv2_img.height,
                 "image_width": self.image_handler.cv2_img.width
@@ -397,7 +397,7 @@ class DrawingTool():
                 "annotation": {
                     "id": self.annotation_manager.id,
                     "bbox": [start_x, start_y, end_x, end_y],
-                    "image_id":self.image_handler.img_id,
+                    "image_id":self.img_id,
                     "object_id":self.object_id,
                     "iscrowd": 0,
                     "area": (end_x - start_x) * (end_y - start_y),
@@ -469,18 +469,18 @@ class DrawingTool():
      
             self.drawing_annotations()
             if self.is_hidden == 1:
-                self.text_to_write = f"Bounding Box Mode - Hidden - {self.object_id}"
+                self.image_handler.text_to_write = f"Bounding Box Mode - Hidden - {self.object_id}"
             elif self.bbox_type == "feces":
-                self.text_to_write = f"Bounding Box Mode - Feces"
+                self.image_handler.text_to_write = f"Bounding Box Mode - Feces"
             elif self.bbox_type == "normal":
-                self.text_to_write = f"Bounding Box Mode - {self.object_id}"
+                self.image_handler.text_to_write = f"Bounding Box Mode - {self.object_id}"
             
         
             self.image_handler.show_image()
 
         # initialize a new pose annotation when a new object id is created 
         elif self.pose_mode == True:
-        
+          
             self.image_handler.cv2_img.set_image()
       
             self.drawing_annotations()
@@ -488,7 +488,7 @@ class DrawingTool():
             pose_mode_text = f"Pose Mode - {self.object_id}"
             if self.pose_type:
                 pose_mode_text = f"Pose Mode - {self.pose_type.capitalize()} - {self.object_id}"
-                self.annotation_manager.id = self.get_id(self.annotation_files, self.video_manager, "annotations")
+                self.annotation_manager.id = self.image_handler.get_id(self.annotation_files, self.image_handler.video_manager, "annotations")
                 info = {
                     "images": {
                         "id": self.img_id,
@@ -509,6 +509,6 @@ class DrawingTool():
                 }
                 self.annotation_manager.save_to_json(info, "pose")
 
-            self.text_to_write = pose_mode_text
+            self.image_handler.text_to_write = pose_mode_text
         
             self.image_handler.show_image()
