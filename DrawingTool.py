@@ -116,6 +116,8 @@ class DrawingTool():
                         continue
 
                     for annotation_data in data["annotations"]:
+                        if breakout:
+                            break
                         if annotation_data["image_id"] != img_id:
                             continue
 
@@ -129,13 +131,16 @@ class DrawingTool():
                                     self.keypoint_type = keypoint[0]
                                     self.keypoint_value = keypoint[1]
                                     self.annotation_manager.id = annotation_data["id"]
+                                    
+                                    self.object_id = annotation_data["object_id"]
+                             
                                     move_pose_point = True
                                     move_top_left = move_top_right = move_bottom_left = move_bottom_right = False
                                     breakout = True
                                     break
-                            else:
-                                self.keypoint_type = self.keypoint_value = None
-                                move_pose_point = False
+                                else:
+                                    self.keypoint_type = self.keypoint_value = None
+                                    move_pose_point = False
                         else:
                             corners = {
                                 "top_left": (annotation_data["bbox"][0], annotation_data["bbox"][1]),
@@ -143,10 +148,12 @@ class DrawingTool():
                                 "bottom_left": (annotation_data["bbox"][0], annotation_data["bbox"][3]),
                                 "bottom_right": (annotation_data["bbox"][2], annotation_data["bbox"][3])
                             }
-
+                   
                             for corner, coord in corners.items():
+                         
                                 if abs(coord[0] - x) < self.corner_size and abs(coord[1] - y) < self.corner_size:
                                     self.annotation_manager.id = annotation_data["id"]
+                                    self.object_id = annotation_data["object_id"]
                                     move_top_left = corner == "top_left"
                                     move_top_right = corner == "top_right"
                                     move_bottom_left = corner == "bottom_left"
@@ -154,14 +161,17 @@ class DrawingTool():
                                     move_pose_point = False
                                     self.temp_bbox_coords = annotation_data["bbox"]
                                     breakout = True
+                                 
                                     break
-                            else:
-                                move_top_left = move_top_right = move_bottom_left = move_bottom_right = move_pose_point = False
+                                else:
+                                    move_top_left = move_top_right = move_bottom_left = move_bottom_right = move_pose_point = False
 
                 moved = False
                 self.click_count += 1
+          
 
         elif event == cv2.EVENT_LBUTTONUP:
+            
             self.click_count = 0
             if moved:
            
@@ -243,6 +253,7 @@ class DrawingTool():
 
         elif self.click_count == 1:
             moved = True
+   
             if move_top_left or move_top_right or move_bottom_left or move_bottom_right or move_pose_point:
                 self.image_handler.cv2_img.set_image()
          
