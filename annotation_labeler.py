@@ -235,7 +235,7 @@ class AnnotationTool():
                         self.editing_mode = False
              
                         self.drawing_tool.image_handler.text_to_write = None
-                        self.drawing_tool.cv2_img.set_image()
+                        self.drawing_tool.image_handler.cv2_img.set_image()
                         self.drawing_tool.drawing_annotations()
                         self.drawing_tool.image_handler.show_image()
                         cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.dummy_function)
@@ -936,7 +936,7 @@ class AnnotationTool():
              
                         self.drawing_tool.image_handler.cv2_img = CV2Image(imagepath, imagename)
                         self.drawing_tool.image_handler.video_manager.cv2_img = self.drawing_tool.image_handler.cv2_img
-                        self.pyqt_window.window_name = self.drawing_tool.cv2_img.name
+                        self.pyqt_window.window_name = self.drawing_tool.image_handler.cv2_img.name
                         self.pyqt_window.cluster_count = len(directories)
 
                         if int(((self.drawing_tool.image_handler.cv2_img.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
