@@ -26,7 +26,7 @@ class DrawingTool():
         self.corner_size = 10
     def dummy_function(self, event, x, y, flags, param):
         pass
-
+        
 
     def drawing_annotations(self):
         """
