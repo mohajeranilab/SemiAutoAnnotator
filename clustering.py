@@ -13,7 +13,6 @@ import os
 import shutil
 from scipy.spatial import ConvexHull
 from tqdm import tqdm
-
  
 def preprocess_image(img_path):
     """
@@ -207,11 +206,15 @@ def cluster_and_plot(features_tsne, epsilon, min_samples, image_dir):
     """
     
     coordinates_tsne = features_tsne[:, 1:].astype(float)
-
+  
     db = DBSCAN(eps=epsilon, min_samples=min_samples).fit(coordinates_tsne)
 
     # labels is an array with the same length has coordinates_tsne with the cluster #
     labels = db.labels_
+ 
+    # Append labels as a new column to features_tsne
+    features_tsne_with_labels = np.column_stack((features_tsne, labels))
+   
 
     n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
     n_noise = list(labels).count(-1)
@@ -227,13 +230,18 @@ def cluster_and_plot(features_tsne, epsilon, min_samples, image_dir):
     
     shutil.rmtree(clusters_dir, ignore_errors=True)
     os.makedirs(clusters_dir, exist_ok=True)
+    already_used = set()
     for cluster_label in set(labels):
         if cluster_label != -1:  # ignoring nose points
            
-            cluster_points = coordinates_tsne[labels == cluster_label]
-       
-            
-            cluster_indices = np.where(labels == cluster_label)[0]
+            selected_rows = features_tsne_with_labels[features_tsne_with_labels[:, -1] == str(cluster_label)]
+          
+
+            # Extract the coordinates (assuming they are in columns 1 and 2)
+            cluster_points = selected_rows[:, 1:3].astype(float)
+    
+
+
             cluster_center = np.mean(cluster_points, axis=0)
             cluster_centers[cluster_label] = cluster_center
             plt.text(cluster_center[0], cluster_center[1], str(cluster_label),
@@ -243,6 +251,7 @@ def cluster_and_plot(features_tsne, epsilon, min_samples, image_dir):
             simplices = []
             num_hulls = len(cluster_points) // 25
             num_hulls = max(3, num_hulls)
+            convex_hull_points = []
             for _ in range(num_hulls):
 
                 if len(cluster_points) < 3:
@@ -254,19 +263,28 @@ def cluster_and_plot(features_tsne, epsilon, min_samples, image_dir):
               
         
                     simplices.append((cluster_points[simplex, 0], cluster_points[simplex, 1]))
+             
+              
+                convex_hull_points.extend(cluster_points[hull_indices].tolist())
                 cluster_points = np.delete(cluster_points, hull_indices, axis=0)
-                cluster_indices = np.delete(cluster_indices, hull_indices, axis=0)
+
+        
             for x, y in simplices:
                 plt.plot(x, y, 'k-', lw=1)
           
             centroid_dir = os.path.join(clusters_dir, f"cluster_{cluster_label}/")
             os.makedirs(centroid_dir, exist_ok=True)
-            for idxs in all_hull_indices:
-                for idx in idxs:
-                    image_path = features_tsne[idx][0]
-          
-                    shutil.copy(image_path, centroid_dir)
-  
+
+
+            matched_files = []
+
+            for point in convex_hull_points:
+                for row in features_tsne_with_labels:
+                    if float(row[1]) == point[0] and float(row[2]) == point[1]:
+                        shutil.copy(row[0], centroid_dir)
+                       
+            
+                    
 
     plt.title('DBSCAN Clustering after t-SNE with Convex Hulls')
     plt.xlabel('t-SNE Component 1')

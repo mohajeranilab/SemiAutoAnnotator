@@ -13,6 +13,7 @@ import pywinctl as pwc
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import Qt
 import copy
+import re
 
 from VideoManager import *
 from AnnotationManager import *
@@ -45,7 +46,7 @@ class AnnotationTool():
         
         """
         
-
+        self.drawing_tool.editing_stack = []
         self.drawing_tool.image_handler.cv2_img.set_image()
 
         self.drawing_tool.bbox_mode = False
@@ -128,6 +129,7 @@ class AnnotationTool():
 
                         for annotation_data in data["annotations"]:
                             if self.drawing_tool.img_id == annotation_data["image_id"]:
+                   
                                 break
                             if prev_img_id == annotation_data["image_id"]:
                                 if annotation_data["type"] == "normal bounding_box":
@@ -197,7 +199,7 @@ class AnnotationTool():
           
             self.drawing_tool.image_handler.show_image()
 
-            self.pyqt_window.window_name = self.drawing_tool.image_handler.cv2_img.name
+            self.drawing_tool.image_handler.pyqt_window.window_name = self.drawing_tool.image_handler.cv2_img.name
 
 
             while True:
@@ -210,10 +212,10 @@ class AnnotationTool():
 
                     sys.exit()
 
-                elif key == ord('e') or self.pyqt_window.button_states["editing"]:
+                elif key == ord('e') or self.drawing_tool.image_handler.pyqt_window.button_states["editing"]:
                     self.prev_img_annotations = True
-                    if self.pyqt_window.button_states["editing"]:
-                        self.pyqt_window.button_states["editing"] = False
+                    if self.drawing_tool.image_handler.pyqt_window.button_states["editing"]:
+                        self.drawing_tool.image_handler.pyqt_window.button_states["editing"] = False
                         
                         
                     if self.editing_mode == False:
@@ -240,23 +242,23 @@ class AnnotationTool():
                         self.drawing_tool.image_handler.show_image()
                         cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.dummy_function)
 
-                elif key == ord('r') or self.pyqt_window.button_states["retrain"]:
-                    if self.pyqt_window.button_states["retrain"]:
-                        self.pyqt_window.button_states["retrain"] = False
+                elif key == ord('r') or self.drawing_tool.image_handler.pyqt_window.button_states["retrain"]:
+                    if self.drawing_tool.image_handler.pyqt_window.button_states["retrain"]:
+                        self.drawing_tool.image_handler.pyqt_window.button_states["retrain"] = False
                     self.model_manager.retrain()
                 
 
 
-                elif key == ord('v') or self.pyqt_window.button_states["make video"]: # make video
-                    if self.pyqt_window.button_states["make video"]:
-                        self.pyqt_window.button_states["make video"] = False
+                elif key == ord('v') or self.drawing_tool.image_handler.pyqt_window.button_states["make video"]: # make video
+                    if self.drawing_tool.image_handler.pyqt_window.button_states["make video"]:
+                        self.drawing_tool.image_handler.pyqt_window.button_states["make video"] = False
                     
                     self.drawing_tool.image_handler.video_manager.make_video()
 
-                elif (key == ord('m') or self.pyqt_window.button_states["toggle model"]) and self.model_manager.model_path != None: # "M": Turns model detection on or off, as shown on the image
+                elif (key == ord('m') or self.drawing_tool.image_handler.pyqt_window.button_states["toggle model"]) and self.model_manager.model_path != None: # "M": Turns model detection on or off, as shown on the image
           
-                    if self.pyqt_window.button_states["toggle model"]:
-                        self.pyqt_window.button_states["toggle model"] = False
+                    if self.drawing_tool.image_handler.pyqt_window.button_states["toggle model"]:
+                        self.drawing_tool.image_handler.pyqt_window.button_states["toggle model"] = False
                    
 
              
@@ -268,9 +270,9 @@ class AnnotationTool():
                     self.drawing_tool.image_handler.show_image()
 
 
-                elif key == ord('j') or self.pyqt_window.button_states["decrement id"]: # "J": Previous object ID
-                    if self.pyqt_window.button_states["decrement id"]:
-                        self.pyqt_window.button_states["decrement id"]
+                elif key == ord('j') or self.drawing_tool.image_handler.pyqt_window.button_states["decrement id"]: # "J": Previous object ID
+                    if self.drawing_tool.image_handler.pyqt_window.button_states["decrement id"]:
+                        self.drawing_tool.image_handler.pyqt_window.button_states["decrement id"]
                         
 
 
@@ -280,11 +282,11 @@ class AnnotationTool():
                     self.drawing_tool.update_img_with_id()
                 
 
-                elif key == ord('b') or self.pyqt_window.button_states["bounding box"]: # bbox mode
+                elif key == ord('b') or self.drawing_tool.image_handler.pyqt_window.button_states["bounding box"]: # bbox mode
                     self.prev_img_annotations = True
                  
-                    if self.pyqt_window.button_states["bounding box"]: 
-                        self.pyqt_window.button_states["bounding box"] = False  # Reset the button state after processing it once
+                    if self.drawing_tool.image_handler.pyqt_window.button_states["bounding box"]: 
+                        self.drawing_tool.image_handler.pyqt_window.button_states["bounding box"] = False  # Reset the button state after processing it once
                     
                     if not self.drawing_tool.bbox_mode: 
                     
@@ -313,10 +315,10 @@ class AnnotationTool():
      
                     self.drawing_tool.image_handler.show_image()
                 
-                elif key == ord('p') or self.pyqt_window.button_states["pose"]: # pose mode
+                elif key == ord('p') or self.drawing_tool.image_handler.pyqt_window.button_states["pose"]: # pose mode
                     self.prev_img_annotations = True
-                    if self.pyqt_window.button_states["pose"]:
-                        self.pyqt_window.button_states["pose"] = False
+                    if self.drawing_tool.image_handler.pyqt_window.button_states["pose"]:
+                        self.drawing_tool.image_handler.pyqt_window.button_states["pose"] = False
                         
 
                     if self.drawing_tool.pose_mode == False:
@@ -364,8 +366,9 @@ class AnnotationTool():
                         self.drawing_tool.image_handler.show_image()
                         cv2.setMouseCallback(self.drawing_tool.image_handler.cv2_img.name, self.drawing_tool.dummy_function)
 
-                elif self.pyqt_window.cluster_button == True:
-                    self.current_dir_num = self.pyqt_window.cluster_num
+                elif self.drawing_tool.image_handler.pyqt_window.cluster_button == True:
+              
+                    self.current_dir_num = self.drawing_tool.image_handler.pyqt_window.cluster_num
                     
          
                     self.drawing_tool.pose_mode = False
@@ -380,11 +383,11 @@ class AnnotationTool():
                     cv2.destroyAllWindows()
                     return
 
-                elif self.pyqt_window.moved == True:
+                elif self.drawing_tool.image_handler.pyqt_window.moved == True:
 
                
-                    self.drawing_tool.image_handler.img_num = self.pyqt_window.img_num
-                    self.pyqt_window.moved = False
+                    self.drawing_tool.image_handler.img_num = self.drawing_tool.image_handler.pyqt_window.img_num
+                    self.drawing_tool.image_handler.pyqt_window.moved = False
                
                     self.drawing_tool.pose_mode = False
                    
@@ -402,11 +405,11 @@ class AnnotationTool():
                     return
 
 
-                elif key == 13 or self.pyqt_window.button_states["next image"]:
-                    
+                elif key == 13 or self.drawing_tool.image_handler.pyqt_window.button_states["next image"]:
+                    self.drawing_tool.editing_stack = []
                     self.redo_stack = []
-                    if self.pyqt_window.button_states["next image"]: # enter; next image in dataset  
-                        self.pyqt_window.button_states["next image"] = False
+                    if self.drawing_tool.image_handler.pyqt_window.button_states["next image"]: # enter; next image in dataset  
+                        self.drawing_tool.image_handler.pyqt_window.button_states["next image"] = False
                         
 
               
@@ -414,33 +417,34 @@ class AnnotationTool():
                     self.drawing_tool.object_id = 1
                     self.drawing_tool.image_handler.show_image()
                     cv2.destroyAllWindows()
-                    self.pyqt_window.scroll_bar.setValue(self.drawing_tool.image_handler.img_num)
+                    self.drawing_tool.image_handler.pyqt_window.scroll_bar.setValue(self.drawing_tool.image_handler.img_num)
              
-                    self.pyqt_window.moved = False
+                    self.drawing_tool.image_handler.pyqt_window.moved = False
                     self.is_prev_img = False
                     return
 
-                elif key == 8 or self.pyqt_window.button_states["previous image"]: # backspace; prev_img 
+                elif key == 8 or self.drawing_tool.image_handler.pyqt_window.button_states["previous image"]: # backspace; prev_img 
                     self.redo_stack = []
-                    if self.pyqt_window.button_states["previous image"]:
-                        self.pyqt_window.button_states["previous image"] = False 
+                    self.drawing_tool.editing_stack = []
+                    if self.drawing_tool.image_handler.pyqt_window.button_states["previous image"]:
+                        self.drawing_tool.image_handler.pyqt_window.button_states["previous image"] = False 
 
                     self.drawing_tool.image_handler.show_image()
                     self.drawing_tool.image_handler.handle_prev_img()
                
                     self.is_passed = True
                     self.drawing_tool.click_count = 0
-                    self.pyqt_window.scroll_bar.setValue(self.drawing_tool.image_handler.img_num)
-                    self.pyqt_window.moved = False
+                    self.drawing_tool.image_handler.pyqt_window.scroll_bar.setValue(self.drawing_tool.image_handler.img_num)
+                    self.drawing_tool.image_handler.pyqt_window.moved = False
 
                     self.result = False
                     self.is_prev_img = True
                     return
 
-                elif key == ord('d') or self.pyqt_window.button_states["delete"]: # delete all annotations for an image
-           
-                    if self.pyqt_window.button_states["delete"]:
-                        self.pyqt_window.button_states["delete"] = False
+                elif key == ord('d') or self.drawing_tool.image_handler.pyqt_window.button_states["delete"]: # delete all annotations for an image
+                    
+                    if self.drawing_tool.image_handler.pyqt_window.button_states["delete"]:
+                        self.drawing_tool.image_handler.pyqt_window.button_states["delete"] = False
                         
                     for annotation_file in self.annotation_files:
                         with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
@@ -467,9 +471,9 @@ class AnnotationTool():
                     self.editing_mode = False
                     self.drawing_tool.object_id = 1
                     self.annotation_manager.cleaning()
-                elif key == 89 or self.pyqt_window.button_states["redo"]: # no code for ctrl + y, pressing "y" == 86; redo
-                    if self.pyqt_window.button_states["redo"]:
-                        self.pyqt_window.button_states["redo"] = False
+                elif key == 89 or self.drawing_tool.image_handler.pyqt_window.button_states["redo"]: # no code for ctrl + y, pressing "y" == 86; redo
+                    if self.drawing_tool.image_handler.pyqt_window.button_states["redo"]:
+                        self.drawing_tool.image_handler.pyqt_window.button_states["redo"] = False
                     
                     if self.redo_stack:
                         info = self.redo_stack.pop()
@@ -501,11 +505,55 @@ class AnnotationTool():
                         self.drawing_tool.drawing_annotations()
                         self.drawing_tool.image_handler.show_image()
                    
-                elif key == 26 or self.pyqt_window.button_states["undo"]: # ctrl + z; undo
-                    if self.pyqt_window.button_states["undo"]:
-                        self.pyqt_window.button_states["undo"] = False
+                elif key == 26 or self.drawing_tool.image_handler.pyqt_window.button_states["undo"]: # ctrl + z; undo
+                    if self.drawing_tool.image_handler.pyqt_window.button_states["undo"]:
+                        self.drawing_tool.image_handler.pyqt_window.button_states["undo"] = False
+              
+                    breakout = False
+                    if len(self.drawing_tool.editing_stack) != 0:
+                        for annotation_file in self.annotation_files:
+                            if breakout:
+                                break
+                            with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
+                                data = json.load(f)
+
+                            for i in range(len(data["annotations"])):
+                                old_annotation_data = self.drawing_tool.editing_stack.pop()
+                          
+                                if data["annotations"][i]["id"] == old_annotation_data["id"] and data["annotations"][i]["object_id"] == old_annotation_data["object_id"] and data["annotations"][i]["image_id"] == old_annotation_data["image_id"]:
+                                    if data["annotations"][i]["type"] == "pose":
+                                        data["annotations"][i]["keypoints"] = old_annotation_data["keypoints"]
+                                    else:
+                                        
+                                        data["annotations"][i]["bbox"] = old_annotation_data["bbox"]
+                                        data["annotations"][i]["area"] = old_annotation_data["area"]
+                                        data["annotations"][i]["is_hidden"] = old_annotation_data["is_hidden"]
+
+                                    data["annotations"][i]["id"] = old_annotation_data["id"]
+                                    data["annotations"][i]["image_id"] = old_annotation_data["image_id"]
+                                    data["annotations"][i]["object_id"] = old_annotation_data["object_id"]
+                                    data["annotations"][i]["iscrowd"] = old_annotation_data["iscrowd"]
+                                    data["annotations"][i]["type"] = old_annotation_data["type"]
+                                    data["annotations"][i]["time"] = old_annotation_data["time"]
+                                    data["annotations"][i]["conf"] = old_annotation_data["conf"]
+                                    breakout = True
+                 
+                                    with open(os.path.join(self.drawing_tool.image_handler.video_manager.video_dir, annotation_file), 'w') as f:
+                                        json.dump(data, f, indent=4)
+                                    break
+                                else:
+
+                                    self.drawing_tool.editing_stack.append(old_annotation_data)
+                             
+
                         
+                        self.drawing_tool.image_handler.cv2_img.set_image()
+            
+                        self.drawing_tool.drawing_annotations()
                         
+                        self.drawing_tool.image_handler.show_image()
+                        continue 
+                    
                     is_empty = True
 
                     for annotation_file in self.annotation_files:
@@ -597,9 +645,9 @@ class AnnotationTool():
                     self.drawing_tool.image_handler.text_to_write = mode_text
                     self.drawing_tool.image_handler.show_image()
                  
-                elif key == ord('n') or self.pyqt_window.button_states["increment id"]: # next mouse ID
-                    if self.pyqt_window.button_states["increment id"]:
-                        self.pyqt_window.button_states["increment id"] = False
+                elif key == ord('n') or self.drawing_tool.image_handler.pyqt_window.button_states["increment id"]: # next mouse ID
+                    if self.drawing_tool.image_handler.pyqt_window.button_states["increment id"]:
+                        self.drawing_tool.image_handler.pyqt_window.button_states["increment id"] = False
               
            
                     self.drawing_tool.object_id += 1
@@ -646,9 +694,10 @@ class AnnotationTool():
                 }
 
                     for keybind, p_label in pose_options.items():
-                        if key == keybind or (self.pyqt_window.button_states[p_label.lower()]):
-                            if self.pyqt_window.button_states[p_label.lower()]:
-                                self.pyqt_window.button_states[p_label.lower()] = False
+                      
+                        if key == keybind or (self.drawing_tool.image_handler.pyqt_window.button_states[p_label.lower()]):
+                            if self.drawing_tool.image_handler.pyqt_window.button_states[p_label.lower()]:
+                                self.drawing_tool.image_handler.pyqt_window.button_states[p_label.lower()] = False
                            
                             self.drawing_tool.image_handler.cv2_img.set_image()
                             self.drawing_tool.drawing_annotations()
@@ -712,23 +761,6 @@ class AnnotationTool():
 
 
 
-        self.result = False
-        if self.annotations_exists:
-            msg_box = QMessageBox()
-            msg_box.setIcon(QMessageBox.Question)
-            msg_box.setWindowTitle("Continue to Next Image")
-            msg_box.setText("Do you want to continue your work on the image following the last annotated image?")
-            msg_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-            msg_box.setDefaultButton(QMessageBox.No)
-            
-            self.result = msg_box.exec_()
-
-            if self.result == QMessageBox.Yes:
-                self.result = True
-            else:
-                self.result = False
-
-
 
 
 
@@ -743,8 +775,8 @@ class AnnotationTool():
         file_or_video_box.setText("Do you want to extract frames from a video, or select a folder of frames?")
         
         # Add custom buttons
-        file_button = file_or_video_box.addButton("File", QMessageBox.AcceptRole)
-        folder_button = file_or_video_box.addButton("Folder", QMessageBox.RejectRole)
+        file_button = file_or_video_box.addButton("Video File", QMessageBox.AcceptRole)
+        folder_button = file_or_video_box.addButton("Image Folder", QMessageBox.RejectRole)
         
         # Execute the message box and get the result
         file_or_video_box.exec_()
@@ -791,7 +823,7 @@ class AnnotationTool():
             self.drawing_tool.image_handler.model_detecting = "On"
             self.image_handler.model_detecting = "On"
 
-            #comment the below code to turn off/on clustering 
+            #comment the below code to turn off/on clustering    
             if args.clustering:
                 initialize_clustering((self.image_dir), self.model_manager.model_path, self.frame_skip)
                 dir_list = os.listdir("used_videos/" + image_location_name.split(".")[0] + "/clusters/")
@@ -845,32 +877,33 @@ class AnnotationTool():
         self.annotation_manager = AnnotationManager(self.drawing_tool.image_handler.video_manager.video_dir, self.annotation_files)
         self.drawing_tool.annotation_manager = self.annotation_manager
         self.drawing_tool.image_handler.annotation_manager = self.annotation_manager
-        self.pyqt_window = MainWindow()
-        self.drawing_tool.image_handler.pyqt_window = self.pyqt_window
-        self.drawing_tool.image_handler.pyqt_window.show()
-        self.pyqt_window.setWindowFlags(Qt.WindowStaysOnTopHint)
         
-        self.pyqt_window.show()
+        self.drawing_tool.image_handler.pyqt_window = MainWindow()
+        self.drawing_tool.image_handler.pyqt_window.setWindowFlags(Qt.WindowStaysOnTopHint)
+        self.drawing_tool.image_handler.pyqt_window.show()
+   
 
         l = 0 
+        directories = sorted(directories, key=lambda x: int(re.search(r'cluster_(\d+)', x).group(1)))
+
         while self.current_dir_num < len(directories):
-            
+        
             self.drawing_tool.image_handler.current_dir = directories[self.current_dir_num]
           
             self.drawing_tool.image_handler.imgs = os.listdir(self.drawing_tool.image_handler.current_dir)
-            self.pyqt_window.img_list = self.drawing_tool.image_handler.imgs
+            self.drawing_tool.image_handler.pyqt_window.img_list = self.drawing_tool.image_handler.imgs
             if l == 0:
                 if len(directories) > 1:
-                    self.pyqt_window.cluster_count = len(directories)
-                self.pyqt_window.initialize()
+                    self.drawing_tool.image_handler.pyqt_window.cluster_count = len(directories)
+           
+                self.drawing_tool.image_handler.pyqt_window.initialize()
                 l += 1
 
 
-            self.pyqt_window.scroll_bar.setValue(self.drawing_tool.image_handler.img_num)
+            self.drawing_tool.image_handler.pyqt_window.scroll_bar.setValue(self.drawing_tool.image_handler.img_num)
  
             
 
-          
             with tqdm(total=len(self.drawing_tool.image_handler.imgs), desc=f" {(self.drawing_tool.image_handler.current_dir.split('_')[-1]).replace('/', '')}") as pbar:
                 if len(directories) == 1:
 
@@ -886,7 +919,7 @@ class AnnotationTool():
            
                         self.drawing_tool.image_handler.cv2_img = CV2Image(imagepath, imagename)
                         self.drawing_tool.image_handler.video_manager.cv2_img = self.drawing_tool.image_handler.cv2_img
-                        self.pyqt_window.window_name = self.drawing_tool.image_handler.cv2_img.name
+                        self.drawing_tool.image_handler.pyqt_window.window_name = self.drawing_tool.image_handler.cv2_img.name
                     
                         if int(((self.drawing_tool.image_handler.cv2_img.name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
                         
@@ -936,10 +969,10 @@ class AnnotationTool():
              
                         self.drawing_tool.image_handler.cv2_img = CV2Image(imagepath, imagename)
                         self.drawing_tool.image_handler.video_manager.cv2_img = self.drawing_tool.image_handler.cv2_img
-                        self.pyqt_window.window_name = self.drawing_tool.image_handler.cv2_img.name
-                        self.pyqt_window.cluster_count = len(directories)
+                        self.drawing_tool.image_handler.pyqt_window.window_name = self.drawing_tool.image_handler.cv2_img.name
+                        self.drawing_tool.image_handler.pyqt_window.cluster_count = len(directories)
 
-                        if int(((self.drawing_tool.image_handler.cv2_img.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
+                        if int(((self.drawing_tool.image_handler.cv2_img.name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
                         
                            
                            
@@ -967,8 +1000,8 @@ class AnnotationTool():
                             else:
                                 if self.result == False:
                                     self.annotating()
-                        if self.pyqt_window.cluster_button == True:
-                            self.pyqt_window.cluster_button = False
+                        if self.drawing_tool.image_handler.pyqt_window.cluster_button == True:
+                            self.drawing_tool.image_handler.pyqt_window.cluster_button = False
                             break
                             
                         if self.drawing_tool.image_handler.img_num != len(self.drawing_tool.image_handler.imgs):

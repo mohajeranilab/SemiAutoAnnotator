@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QMainWindow, QPushButton, QWidget, QVBoxLayout, QApplication, QVBoxLayout, QScrollBar
+from PyQt5.QtWidgets import QMainWindow, QPushButton, QWidget, QVBoxLayout, QApplication, QVBoxLayout, QScrollBar, QScrollArea
 from PyQt5.QtGui import QIcon
 from PyQt5.QtCore import Qt
 import sys
@@ -51,10 +51,24 @@ class MainWindow(QMainWindow):
 
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
-        self.layout = QVBoxLayout(central_widget)
+
+        scroll_area = QScrollArea(central_widget)
+        scroll_area.setWidgetResizable(True)
+
+        scroll_content = QWidget()
+        self.layout = QVBoxLayout(scroll_content)
+
+
+        self.original_buttons()
+
+        scroll_area.setWidget(scroll_content)
+
+        central_layout = QVBoxLayout(central_widget)
+        central_layout.addWidget(scroll_area)
+        # self.layout = QVBoxLayout(central_widget)
 
     
-        self.original_buttons()
+        # self.original_buttons()
 
 
 
@@ -73,7 +87,14 @@ class MainWindow(QMainWindow):
         """
         Create minimize, exit, and scrollbar widgets that will always be on the window
         """
-        self.adjust_size()
+
+        # create buttons of different clusters if clustering was chosen
+        if self.cluster_count:
+          
+            self.all_cluster_button = QPushButton(f"Clusters", self)  
+            self.all_cluster_button.clicked.connect(lambda checked, cluster_count=self.cluster_count: self.create_cluster_buttons())
+            self.layout.addWidget(self.all_cluster_button)
+       
         # create minimize button
         self.minimize_button = QPushButton("Minimize", self)
         self.minimize_button.clicked.connect(lambda: self.showMinimized())
@@ -87,20 +108,9 @@ class MainWindow(QMainWindow):
         icon = QIcon("assets/images/exit.png")
         self.exit_button.setIcon(icon)
         self.layout.addWidget(self.exit_button)
+        
 
-        if self.cluster_count:
-            self.all_cluster_button = QPushButton(f"Clusters", self)
-            self.all_cluster_button.clicked.connect(lambda checked, cluster_count=self.cluster_count: self.create_cluster_buttons(cluster_count))
-            self.layout.addWidget(self.all_cluster_button)
 
-        # if self.cluster_count:     
-        #     for i in range(self.cluster_count):
-        #         self.cluster_button = QPushButton(f"Cluster {i}", self)
-        #         self.cluster_button.clicked.connect(lambda checked, index=i: self.cluster_testing(index))
-        #         self.layout.addWidget(self.cluster_button)
-
-        # create scrollbar 
-        #if hasattr(MainWindow, "img_list"):
         self.scroll_area = QWidget(self)
         self.scroll_layout = QVBoxLayout(self.scroll_area)
         self.scroll_bar = QScrollBar()
@@ -110,19 +120,19 @@ class MainWindow(QMainWindow):
         self.scroll_bar.valueChanged.connect(self.on_scroll)
         self.scroll_layout.addWidget(self.scroll_bar)
         self.layout.addWidget(self.scroll_area)
-         # Adjust the size of the window to fit the layout
+      
     
-    def cluster_testing(self, num):
+    def set_cluster_num(self, num):
         self.cluster_button = True
         self.cluster_num = num
    
         
 
-    def create_cluster_buttons(self, cluster_count):
+    def create_cluster_buttons(self):
         self.clear_layout()
-        for i in range(cluster_count):
+        for i in range(self.cluster_count):
             self.cluster_button = QPushButton(f"Cluster {i}", self)
-            self.cluster_button.clicked.connect(lambda checked, index=i: self.cluster_testing(index))
+            self.cluster_button.clicked.connect(lambda checked, index=i-1: self.set_cluster_num(index))
             self.layout.addWidget(self.cluster_button)
         
 
@@ -140,7 +150,7 @@ class MainWindow(QMainWindow):
         """
         Adjust the size of the window based on the content
         """
-        # Optionally, you can compute the size based on number of buttons or other content
+
         content_height = self.layout.sizeHint().height()
         content_width = self.layout.sizeHint().width()
         self.resize(205, content_height)  # Adjust height and widt

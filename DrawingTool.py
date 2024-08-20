@@ -137,6 +137,8 @@ class DrawingTool():
                                     move_pose_point = True
                                     move_top_left = move_top_right = move_bottom_left = move_bottom_right = False
                                     breakout = True
+                                    self.editing_stack.append(annotation_data)
+                          
                                     break
                                 else:
                                     self.keypoint_type = self.keypoint_value = None
@@ -161,6 +163,7 @@ class DrawingTool():
                                     move_pose_point = False
                                     self.temp_bbox_coords = annotation_data["bbox"]
                                     breakout = True
+                                    self.editing_stack.append(annotation_data)
                                  
                                     break
                                 else:
