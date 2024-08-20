@@ -159,7 +159,9 @@ class AnnotationTool():
                                         "conf": 1,
                                         "time": (datetime.now() - timedelta(seconds=1)).strftime("%Y-%m-%d %H:%M:%S")
                                     }
-                                
+                                else:
+                                    continue
+
                                 if info:
                                     info_copy = copy.deepcopy(info)
                                 
