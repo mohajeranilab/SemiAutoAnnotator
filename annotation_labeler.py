@@ -104,6 +104,7 @@ class AnnotationTool():
 
                     if data["images"]:
                         img_index = self.drawing_tool.image_handler.cv2_img.path.rfind('_img_') + 5  
+                        print(img_index)
                         jpg_index = self.drawing_tool.image_handler.cv2_img.path.rfind('.jpg')
 
                     
@@ -875,7 +876,12 @@ class AnnotationTool():
      
         self.drawing_tool.image_handler.img_num = 0
         # directory list will be the list of clusters if a model is chosen, or a list of extracted frames
-        directories = [self.image_dir] if not dir_list else dir_list
+        if not dir_list:
+
+            directories = [self.image_dir]
+        else:
+            directories = dir_list
+            directories = sorted(directories, key=lambda x: int(re.search(r'cluster_(\d+)', x).group(1)))
         self.annotation_manager = AnnotationManager(self.drawing_tool.image_handler.video_manager.video_dir, self.annotation_files)
         self.drawing_tool.annotation_manager = self.annotation_manager
         self.drawing_tool.image_handler.annotation_manager = self.annotation_manager
@@ -886,7 +892,7 @@ class AnnotationTool():
    
 
         l = 0 
-        directories = sorted(directories, key=lambda x: int(re.search(r'cluster_(\d+)', x).group(1)))
+
 
         while self.current_dir_num < len(directories):
         
