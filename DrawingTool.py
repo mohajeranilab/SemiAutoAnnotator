@@ -117,7 +117,7 @@ class DrawingTool():
                     with open(os.path.join(self.image_handler.video_manager.processed_path, annotation_file), 'r') as f:
                         data = json.load(f)
 
-                    img_id = next((img_data["id"] for img_data in data["images"] if img_data["file_name"] == self.image_handler.cv2_img.path), None)
+                    img_id = next((img_data["id"] for img_data in data["images"] if os.path.normpath(img_data["file_name"]) == os.path.normpath(self.image_handler.cv2_img.path)), None)
                     if img_id is None:
                         continue
 
@@ -185,7 +185,7 @@ class DrawingTool():
         elif event == cv2.EVENT_LBUTTONUP:
             
             self.click_count = 0
-            # if the editing caused the annotation to move
+            # only if the editing caused the annotation to move
             if moved:
                 
                 # setting new pose point
@@ -308,7 +308,7 @@ class DrawingTool():
 
                 self.drawing_annotations()
                 
-                # setting new pose point
+                # setting new pose point while dragging around
                 if move_pose_point:
                     for keypoint in self.temp_keypoints:
                         if keypoint[0] != self.keypoint_type or keypoint[1] != self.keypoint_value:
@@ -317,7 +317,7 @@ class DrawingTool():
                     if self.keypoint_type is not None and self.keypoint_value is not None:
                         cv2.circle(self.image_handler.cv2_img.get_image(), (x, y), 5, self.annotation_colors[self.object_id], -1)
                         cv2.putText(self.image_handler.cv2_img.get_image(), self.keypoint_type.capitalize(), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale - 0.25, self.image_handler.font_color, self.image_handler.font_thickness)
-                # setting new bbox shape
+                # setting new bbox shape while dragging around
                 else:
                     x1, y1, x2, y2 = self.temp_bbox_coords
                     if move_top_left:
@@ -403,7 +403,7 @@ class DrawingTool():
                 
                     break_loop = False
                     for image_data in data["images"]:
-                        if image_data["file_name"] == self.image_handler.cv2_img.path:
+                        if os.path.normpath(image_data["file_name"]) == os.path.normpath(self.image_handler.cv2_img.path):
                 
                             self.img_id = image_data["id"]
                             break_loop = True

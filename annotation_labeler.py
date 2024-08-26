@@ -68,7 +68,7 @@ class AnnotationTool():
                 data = json.load(f)
 
                 for image_data in data["images"]:
-                    if image_data["file_name"] == self.drawing_tool.image_handler.cv2_img.path:
+                    if os.path.normpath(image_data["file_name"]) == os.path.normpath(self.drawing_tool.image_handler.cv2_img.path):
                         self.drawing_tool.img_id = image_data["id"]
 
         if self.drawing_tool.img_id == None:
@@ -123,7 +123,7 @@ class AnnotationTool():
                             
                             for image_data in data["images"]:
                                 
-                                if new_filename == image_data["file_name"]:
+                                if os.path.normpath(new_filename) == os.path.normpath(image_data["file_name"]):
                                     self.prev_img_annotations = True
                                     prev_img_id = image_data["id"]
                                     break
@@ -761,7 +761,7 @@ class AnnotationTool():
                         continue
 
                     for image_data in data["images"]:
-                        if image_data["file_name"] == self.drawing_tool.image_handler.cv2_img.path:
+                        if os.path.normpath(image_data["file_name"]) == os.path.normpath(self.drawing_tool.image_handler.cv2_img.path):
                             if image_data["id"] in annotated_image_ids:
                                 self.annotations_exists = True
                                 continue

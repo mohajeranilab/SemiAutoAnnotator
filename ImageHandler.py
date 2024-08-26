@@ -76,13 +76,13 @@ class ImageHandler():
         Shows the image, also resizes it to a specific size and also moves it to a specific place on the screen
 
         *** An issue I ran into is that when creating a new opencv2 window, it creates the window somewhere (previous position of the last opened cv2 window ?)
-        *** THEN moves the window to the specified location. This creates an undesired flickering effect.
+        THEN moves the window to the specified location. This creates an undesired flickering effect.
 
         *** Another issue is resizing, if the user wants to resize the image then whenever they commit actions onto the image, the image is resized by a specific amount.
         """
         global window_width_change, window_height_change
         
-        # initializing window position and sizing
+        
         if not any(value is None for value in self.window_info.values()):
             
             # if a window exists with the image name, 
@@ -100,15 +100,15 @@ class ImageHandler():
         
                 window_width -= window_width_change
                 window_height -= window_height_change
-                self.window_info = {}
                 self.window_info["img_name"] = self.cv2_img.name
                 self.window_info["coordinates"] = (x, y)
                 self.window_info["dimensions"] = (window_width, window_height)
-    
+            
             else:
                 x, y = self.window_info["coordinates"]
                 window_width, window_height = self.window_info["dimensions"]
 
+        # initializing window position and sizing
         else:
             # if a window exists with the image name, retrieve its coordinates and position
             if pwc.getWindowsWithTitle(self.cv2_img.name):
@@ -124,22 +124,21 @@ class ImageHandler():
 
         is_diff_img = False
         
-        # use the previous window position and size for the differetn image 
+        # use the previous window position and size for the different image 
         if self.window_info["img_name"] != self.cv2_img.name:
             
-            self.window_info = {}
             self.window_info["img_name"] = self.cv2_img.name
             self.window_info["coordinates"] = (x, y)
             self.window_info["dimensions"] = (window_width, window_height)
             is_diff_img = True
         cv2.namedWindow(self.cv2_img.name, cv2.WINDOW_NORMAL)  
 
-        # starting the image opened off screen
+        # starting the image opened off screen to help prevent the flickering effect stated above
         if is_diff_img:
             cv2.resizeWindow(self.cv2_img.name, (1, 1))
             cv2.moveWindow(self.cv2_img.name, -5000, -5000)
 
-        # moving the image to the desired location as well as the pyqtwinddow next to it
+        # moving the image to the desired location as well as the pyqtwindow next to it
         cv2.resizeWindow(self.cv2_img.name, (window_width, window_height))  
         cv2.moveWindow(self.cv2_img.name, x, y)
         self.pyqt_window.move_to_coordinates(x - 200, y)
@@ -173,7 +172,7 @@ class ImageHandler():
         Handle navigation to the previous image in the sequence
         """
     
-        # starting image
+        # if it is the starting image
         if self.img_num == 0:   
             self.img_num -= 1
             cv2.destroyAllWindows()
