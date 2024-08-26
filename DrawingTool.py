@@ -14,7 +14,6 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import Qt
 import copy
 
-
 from ImageHandler import ImageHandler
 
 
@@ -24,6 +23,8 @@ class DrawingTool():
         self.image_handler = ImageHandler()
         self.annotation_files = ["bbox_annotations.json", "pose_annotations.json"]
         self.corner_size = 10
+
+
     def dummy_function(self, event, x, y, flags, param):
         pass
         
@@ -34,15 +35,15 @@ class DrawingTool():
         """
 
 
-
         for annotation_file in self.annotation_files:
-            with open(os.path.join(self.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
+            with open(os.path.join(self.image_handler.video_manager.processed_path, annotation_file), 'r') as f:
         
                 annotations = json.load(f)
             
             for annotation in annotations["annotations"]:
                 if annotation["image_id"] == self.img_id:
-            
+                    
+                    # drawing established bbox annotations on the image
                     if annotation["type"].split()[-1] == "bounding_box":
                    
                         corner_points = [(annotation["bbox"][0], annotation["bbox"][1]), (annotation["bbox"][2], annotation["bbox"][1]), (annotation["bbox"][0], annotation["bbox"][3]), (annotation["bbox"][2], annotation["bbox"][3])]
@@ -52,13 +53,16 @@ class DrawingTool():
                         cv2.putText(self.image_handler.cv2_img.get_image(), str(annotation["object_id"]), (annotation["bbox"][2] - 20, annotation["bbox"][3] - 5), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale, self.image_handler.font_color, self.image_handler.font_thickness)
                         if annotation["type"] == "detected bounding_box":
                             cv2.putText(self.image_handler.cv2_img.get_image(), f"{annotation['conf']:.2f}", (annotation["bbox"][0], annotation["bbox"][3]), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale, self.image_handler.font_color, self.image_handler.font_thickness)
-               
+
+                    # drawing established pose annotations on the image
                     elif annotation["type"] == "pose":
                         for keypoint_annotation in annotation["keypoints"]: 
                     
                             if keypoint_annotation[1][0] != None or keypoint_annotation[1][1] != None:
                                 cv2.circle(self.image_handler.cv2_img.get_image(), (keypoint_annotation[1][0], keypoint_annotation[1][1]), 5, self.annotation_colors[annotation["object_id"]], -1)
                                 cv2.putText(self.image_handler.cv2_img.get_image(), keypoint_annotation[0].capitalize(), (keypoint_annotation[1][0], keypoint_annotation[1][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale-0.25, self.image_handler.font_color, self.image_handler.font_thickness)
+                        
+                        # drawing lines correlating to certain pairs
                         if annotation['keypoints']:
                             keypoints = {kp[0]: kp[1] for kp in annotation['keypoints']}
           
@@ -101,6 +105,8 @@ class DrawingTool():
         """
 
         global move_top_left, move_top_right, move_bottom_right, move_bottom_left, move_pose_point, file_to_dump, moved
+
+        # clicking down on the image, initializing which annotation is being chosen to be edited
         if event == cv2.EVENT_LBUTTONDOWN:
             self.temp_bbox_coords = None
             breakout = False
@@ -108,7 +114,7 @@ class DrawingTool():
                 for annotation_file in self.annotation_files:
                     if breakout:
                         break
-                    with open(os.path.join(self.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
+                    with open(os.path.join(self.image_handler.video_manager.processed_path, annotation_file), 'r') as f:
                         data = json.load(f)
 
                     img_id = next((img_data["id"] for img_data in data["images"] if img_data["file_name"] == self.image_handler.cv2_img.path), None)
@@ -120,7 +126,8 @@ class DrawingTool():
                             break
                         if annotation_data["image_id"] != img_id:
                             continue
-
+                        
+                        # selected annotation is pose
                         if annotation_data["type"] == "pose":
                             if len(annotation_data["keypoints"]) == 0:
                                 continue
@@ -143,6 +150,7 @@ class DrawingTool():
                                 else:
                                     self.keypoint_type = self.keypoint_value = None
                                     move_pose_point = False
+                        # selected annotation is a bounding box
                         else:
                             corners = {
                                 "top_left": (annotation_data["bbox"][0], annotation_data["bbox"][1]),
@@ -173,11 +181,14 @@ class DrawingTool():
                 self.click_count += 1
           
 
+        # clicking off of the image, setting the newly edited annotation
         elif event == cv2.EVENT_LBUTTONUP:
             
             self.click_count = 0
+            # if the editing caused the annotation to move
             if moved:
-           
+                
+                # setting new pose point
                 if move_pose_point:
                     for i, keypoint in enumerate(self.temp_keypoints):
                         if keypoint[0] == self.keypoint_type and keypoint[1] == self.keypoint_value:
@@ -204,6 +215,8 @@ class DrawingTool():
                     self.drawing_annotations()
          
                     self.image_handler.show_image()
+                
+                # setting new bbox shape
                 else:
                 
                     if self.temp_bbox_coords != None:
@@ -254,16 +267,23 @@ class DrawingTool():
                       
                         self.image_handler.show_image()
 
+        # holding down on the click, moving around and editing the annotation
         elif self.click_count == 1:
+
+            # the annotation has moved
             moved = True
-   
+
+            # can only move pose, or the 4 corners of a bbox
             if move_top_left or move_top_right or move_bottom_left or move_bottom_right or move_pose_point:
+                # refresh image
                 self.image_handler.cv2_img.set_image()
          
+                # retrieving the annotation data
                 for annotation_file in self.annotation_files:
-                    with open(os.path.join(self.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
+                    with open(os.path.join(self.image_handler.video_manager.processed_path, annotation_file), 'r') as f:
                         data = json.load(f)
 
+                    
                     for i, annotation_data in enumerate(data["annotations"]):
                         if annotation_data["id"] == self.annotation_manager.id:
                             self.img_id = annotation_data["image_id"]
@@ -282,12 +302,13 @@ class DrawingTool():
 
                             file_to_dump = annotation_file
                             del data["annotations"][i]
-                            with open(os.path.join(self.image_handler.video_manager.video_dir, file_to_dump), 'w') as f:
+                            with open(os.path.join(self.image_handler.video_manager.processed_path, file_to_dump), 'w') as f:
                                 json.dump(data, f, indent=4)
                             break
 
                 self.drawing_annotations()
-
+                
+                # setting new pose point
                 if move_pose_point:
                     for keypoint in self.temp_keypoints:
                         if keypoint[0] != self.keypoint_type or keypoint[1] != self.keypoint_value:
@@ -296,6 +317,7 @@ class DrawingTool():
                     if self.keypoint_type is not None and self.keypoint_value is not None:
                         cv2.circle(self.image_handler.cv2_img.get_image(), (x, y), 5, self.annotation_colors[self.object_id], -1)
                         cv2.putText(self.image_handler.cv2_img.get_image(), self.keypoint_type.capitalize(), (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, self.image_handler.font_scale - 0.25, self.image_handler.font_color, self.image_handler.font_thickness)
+                # setting new bbox shape
                 else:
                     x1, y1, x2, y2 = self.temp_bbox_coords
                     if move_top_left:
@@ -322,13 +344,13 @@ class DrawingTool():
 
     def drawing_bbox(self, event, x, y, flags, param):
         """
-        Handle drawing of bounding boxes based on mouse events.
+        Handle drawing of bounding boxes based on mouse click events.
 
         Args:
             event (int): type of mouse event (cv2.EVENT_LBUTTONDOWN, cv2.EVENT_LBUTTONUP).
             x (int): x-coordinate of the mouse event
             y (int): y-coordinate of the mouse event
-            flags (int): relevant flags passed by OpenCV.
+            flags (int): relevant flags passed by OpenCV
             param (any): additional parameters (not used)
 
         Global Variables:
@@ -375,7 +397,7 @@ class DrawingTool():
             self.annotation_manager.id = self.image_handler.get_id(self.annotation_files, self.image_handler.video_manager, "annotations")
             self.img_id = None
             for annotation_file in self.annotation_files:
-                with open(os.path.join(self.image_handler.video_manager.video_dir, annotation_file), 'r') as f:
+                with open(os.path.join(self.image_handler.video_manager.processed_path, annotation_file), 'r') as f:
                     data = json.load(f)
 
                 
@@ -439,7 +461,7 @@ class DrawingTool():
 
     def drawing_pose(self, event, x, y, flags, param):
         """
-        Handle drawing of pose keypoints based on mouse events.
+        Handle drawing of pose keypoints based on mouse click events.
 
         Args:
             event (int): type of mouse event (cv2.EVENT_LBUTTONDOWN)
@@ -449,7 +471,7 @@ class DrawingTool():
             param (any): additional parameters (not used)
         """
 
-        with open(os.path.join(self.image_handler.video_manager.video_dir, "pose_annotations.json"), 'r') as f:
+        with open(os.path.join(self.image_handler.video_manager.processed_path, "pose_annotations.json"), 'r') as f:
             data = json.load(f)
 
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -466,7 +488,7 @@ class DrawingTool():
                     annotation["time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     break
                 
-            with open(os.path.join(self.image_handler.video_manager.video_dir, "pose_annotations.json"), 'w') as f:
+            with open(os.path.join(self.image_handler.video_manager.processed_path, "pose_annotations.json"), 'w') as f:
                 json.dump(data, f, indent = 4)
        
             self.drawing_annotations()
@@ -475,7 +497,7 @@ class DrawingTool():
 
 
     def update_img_with_id(self):
-        # reread the image but with a new object id and the same bbox titles as before 
+        # reread the image but with a new object id and the same titles as before 
  
         if self.bbox_mode == True:
             self.image_handler.cv2_img.set_image()

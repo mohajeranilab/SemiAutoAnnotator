@@ -39,12 +39,15 @@ class MainWindow(QMainWindow):
             "r leg": False,
             "l leg": False
         }
-        self.moved = False
+        self.scroll_bar_moved = False
         self.cluster_button = False
         self.cluster_count = False
 
 
     def initialize(self):
+        """
+        Initialize the PyQt Window, set the geometry and size, add the main buttons, and add a scroll bar
+        """
         self.setWindowTitle("Key Presses")
         self.setGeometry(-5000, -5000, 205, 480)  # (x, y, width, height), set to -5000, -5000 so when it is initialized its off the screen
         self.setFixedSize(205, 480)
@@ -65,11 +68,6 @@ class MainWindow(QMainWindow):
 
         central_layout = QVBoxLayout(central_widget)
         central_layout.addWidget(scroll_area)
-        # self.layout = QVBoxLayout(central_widget)
-
-    
-        # self.original_buttons()
-
 
 
     def clear_layout(self):
@@ -110,7 +108,7 @@ class MainWindow(QMainWindow):
         self.layout.addWidget(self.exit_button)
         
 
-
+        # setting scroll bar
         self.scroll_area = QWidget(self)
         self.scroll_layout = QVBoxLayout(self.scroll_area)
         self.scroll_bar = QScrollBar()
@@ -127,7 +125,6 @@ class MainWindow(QMainWindow):
         self.cluster_num = num
    
         
-
     def create_cluster_buttons(self):
         self.clear_layout()
         for i in range(self.cluster_count):
@@ -202,7 +199,7 @@ class MainWindow(QMainWindow):
     
     def on_scroll(self, value):
  
-        self.moved = True
+        self.scroll_bar_moved = True
         self.img_num = value
       
     def on_button_clicked(self, key):
@@ -255,8 +252,8 @@ class MainWindow(QMainWindow):
         """
         Override the move event to handle window movement
         """
-        from ImageHandler import ImageHandler 
-        # from annotation_labeler import ImageHandler 
+        from ImageHandler import ImageHandler  
+
         super().moveEvent(event)
 
 

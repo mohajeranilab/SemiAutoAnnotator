@@ -61,8 +61,7 @@ class CV2Image():
         
 
 class ImageHandler():
-    """
-    """
+    
     def __init__(self):
         super().__init__()
         self.annotation_files = ["bbox_annotations.json", "pose_annotations.json"]
@@ -78,18 +77,21 @@ class ImageHandler():
 
         *** An issue I ran into is that when creating a new opencv2 window, it creates the window somewhere (previous position of the last opened cv2 window ?)
         *** THEN moves the window to the specified location. This creates an undesired flickering effect.
+
+        *** Another issue is resizing, if the user wants to resize the image then whenever they commit actions onto the image, the image is resized by a specific amount.
         """
         global window_width_change, window_height_change
         
+        # initializing window position and sizing
         if not any(value is None for value in self.window_info.values()):
             
-        
+            # if a window exists with the image name, 
             if pwc.getWindowsWithTitle(self.cv2_img.name):
                 window = pwc.getWindowsWithTitle(self.cv2_img.name)[0]
                 x, y = window.left, window.top
-        
                 window_width, window_height = window.width, window.height
-        
+
+                # setting the change when resizing image
                 if not self.is_change_set:
             
                     window_width_change = window.width - 720
@@ -102,40 +104,42 @@ class ImageHandler():
                 self.window_info["img_name"] = self.cv2_img.name
                 self.window_info["coordinates"] = (x, y)
                 self.window_info["dimensions"] = (window_width, window_height)
-                
+    
             else:
                 x, y = self.window_info["coordinates"]
                 window_width, window_height = self.window_info["dimensions"]
+
         else:
+            # if a window exists with the image name, retrieve its coordinates and position
             if pwc.getWindowsWithTitle(self.cv2_img.name):
                 window = pwc.getWindowsWithTitle(self.cv2_img.name)[0]
                 x, y = window.left, window.top
 
                 window_width, window_height = window.width, window.height
-        
+            # else, initialize with the following
             else:
                 x, y = self.screen_center_x, self.screen_center_y
     
-            
                 window_width, window_height = 720, 540
-        
 
-        flag = False
+        is_diff_img = False
         
+        # use the previous window position and size for the differetn image 
         if self.window_info["img_name"] != self.cv2_img.name:
             
             self.window_info = {}
             self.window_info["img_name"] = self.cv2_img.name
             self.window_info["coordinates"] = (x, y)
             self.window_info["dimensions"] = (window_width, window_height)
-            flag = True
+            is_diff_img = True
         cv2.namedWindow(self.cv2_img.name, cv2.WINDOW_NORMAL)  
 
-
-        if flag:
+        # starting the image opened off screen
+        if is_diff_img:
             cv2.resizeWindow(self.cv2_img.name, (1, 1))
             cv2.moveWindow(self.cv2_img.name, -5000, -5000)
 
+        # moving the image to the desired location as well as the pyqtwinddow next to it
         cv2.resizeWindow(self.cv2_img.name, (window_width, window_height))  
         cv2.moveWindow(self.cv2_img.name, x, y)
         self.pyqt_window.move_to_coordinates(x - 200, y)
@@ -169,13 +173,13 @@ class ImageHandler():
         Handle navigation to the previous image in the sequence
         """
     
-
-
-        if self.img_num == 0:
+        # starting image
+        if self.img_num == 0:   
             self.img_num -= 1
             cv2.destroyAllWindows()
             return
 
+        # return to the last image based on the frame_skip
         self.img_num -= 1 
         while self.img_num < len(self.imgs):
             img_path = os.path.join(self.current_dir, self.imgs[self.img_num])
@@ -198,7 +202,7 @@ class ImageHandler():
 
         Params:
             annotation_files (list): list of annotation files
-            video_manager (VideoManager): Instance of VideoManager class to retrieve the video_dir
+            video_manager (VideoManager): instance of VideoManager class to retrieve the processed_path
             data_type (str): type of data to get ids (images or annotations)
 
         Returns:
@@ -208,7 +212,7 @@ class ImageHandler():
         id_set = set()
         for annotation_file in annotation_files:
 
-            with open(os.path.join(video_manager.video_dir, annotation_file), 'r') as f:
+            with open(os.path.join(video_manager.processed_path, annotation_file), 'r') as f:
                 data_file = json.load(f)
             id_set.update(data["id"] for data in data_file[data_type])
         id = 0

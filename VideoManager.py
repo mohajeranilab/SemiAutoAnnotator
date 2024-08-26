@@ -11,7 +11,7 @@ class VideoManager():
 
     def __init__(self, frame_skip, annotation_colors, annotation_files):
    
-        self.video_dir = None
+        self.processed_path = None
         self.frame_skip = frame_skip
         self.cv2_img = None
         self.annotation_colors = annotation_colors 
@@ -33,23 +33,23 @@ class VideoManager():
             "/",
             "Video files (*.mp4 *.avi *.mov *.mkv);;All files (*)"
         )
-  
+
 
         assert video_path, "No video file selected."
-      
+
         
         # extracting video name and creating a directory for the video
         video_name, _ = os.path.splitext(os.path.basename(video_path))
-        self.video_dir = os.path.join("used_videos", video_name)
-        os.makedirs(self.video_dir, exist_ok=True)
+        self.processed_path = os.path.join("used_videos", video_name)
+        os.makedirs(self.processed_path, exist_ok=True)
 
-      
+
         # copying video to the 'used_videos/{video_name}/ directory
         shutil.copy(video_path, "used_videos/" + video_name.split(".")[0])
     
  
-        if not os.path.exists(self.video_dir + "/extracted_frames/"):
-            os.makedirs(self.video_dir + "/extracted_frames/")
+        if not os.path.exists(os.path.join(self.processed_path, "extracted_frames")):
+            os.makedirs(os.path.join(self.processed_path, "extracted_frames"))
 
         cap = cv2.VideoCapture(video_path)
         assert cap.isOpened(), "Error: Could not open video."
@@ -62,8 +62,9 @@ class VideoManager():
 
         # extract frames
         while True:
+          
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_count)
-            frame_filename = os.path.join(self.video_dir + "/extracted_frames/", f"{base_name}_img_{frame_count:05d}.jpg")
+            frame_filename = os.path.join(self.processed_path, "extracted_frames", f"{base_name}_img_{frame_count:05d}.jpg")
 
             if not os.path.exists(frame_filename):
                 ret, frame = cap.read()
@@ -80,6 +81,7 @@ class VideoManager():
             
                 
             frame_count += self.frame_skip 
+
 
         cap.release()
         print(f"Extracted {extracted_count} new frames to 'extracted_frames'")
@@ -100,26 +102,28 @@ class VideoManager():
             None,
             "Select Folder",
             "/",
-            QFileDialog.DirsOnly
+            QFileDialog.ShowDirsOnly
         )
 
         assert folder_path, "No folder selected."
 
-        # Extracting folder name and creating a directory for the folder
+        # extracting folder name and creating a directory for the folder
         folder_name = os.path.basename(folder_path)
-        self.folder_dir = os.path.join("used_folders", folder_name)
+   
+        self.folder_dir = os.path.join("used_videos", folder_name)
+    
         os.makedirs(self.folder_dir, exist_ok=True)
-
+        # creating extracted_images in the chosen folder
+        if not os.path.exists(os.path.join(self.folder_dir, "extracted_frames")):
+            os.makedirs(os.path.join(self.folder_dir, "extracted_frames"))
+        
         # Copying folder to the 'used_folders/{folder_name}/' directory
-        shutil.copytree(folder_path, os.path.join("used_folders", folder_name), dirs_exist_ok=True)
-
-        if not os.path.exists(os.path.join(self.folder_dir, "extracted_images/")):
-            os.makedirs(os.path.join(self.folder_dir, "extracted_images/"))
+        shutil.copytree(folder_path, os.path.join(self.folder_dir, "extracted_frames"), dirs_exist_ok=True)
 
         # Iterate through the image files in the folder
         extracted_count = 0
 
-        for root, _, files in os.walk(folder_path):
+        for root, _, files in os.walk(self.folder_dir):
             for file in files:
                 file_path = os.path.join(root, file)
 
@@ -128,14 +132,14 @@ class VideoManager():
 
                     if image is not None:
                         base_name = os.path.splitext(file)[0]
-                        frame_filename = os.path.join(self.folder_dir, "extracted_images/", f"{base_name}.jpg")
+                        frame_filename = os.path.join(self.folder_dir, "extracted_frames", f"{base_name}.jpg")
 
-                        # Save the image in the 'extracted_images' directory
+                        # Save the image in the 'extracted_frames' directory
                         cv2.imwrite(frame_filename, image)
                         extracted_count += 1
 
-        print(f"Extracted {extracted_count} images to 'extracted_images'")
-
+        print(f"Extracted {extracted_count} images to 'extracted_frames'")
+        self.processed_path = self.folder_dir
         return folder_name
 
 
