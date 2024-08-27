@@ -9,7 +9,6 @@ import argparse
 import sys
 import screeninfo
 from tqdm import tqdm
-import pywinctl as pwc
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import Qt
 import copy
@@ -150,6 +149,7 @@ class DrawingTool():
                                 else:
                                     self.keypoint_type = self.keypoint_value = None
                                     move_pose_point = False
+
                         # selected annotation is a bounding box
                         else:
                             corners = {
@@ -363,7 +363,7 @@ class DrawingTool():
         global start_x, start_y, end_x, end_y
         
     
-
+        # handling the dragging of the bbox
         if self.click_count == 1:
             self.image_handler.cv2_img.set_image()
             
@@ -385,6 +385,7 @@ class DrawingTool():
      
             self.image_handler.show_image()
             
+        # initializing the start of the bbox
         if event == cv2.EVENT_LBUTTONDOWN:
     
             if self.click_count == 0:
@@ -393,6 +394,7 @@ class DrawingTool():
                 start_y = max(0, min(y, self.image_handler.cv2_img.height))   
                 self.click_count += 1
 
+        # clicking off to set the bbox
         elif event == cv2.EVENT_LBUTTONUP:
             self.annotation_manager.id = self.image_handler.get_id(self.annotation_files, self.image_handler.video_manager, "annotations")
             self.img_id = None

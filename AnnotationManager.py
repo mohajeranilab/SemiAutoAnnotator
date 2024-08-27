@@ -31,7 +31,7 @@ class AnnotationManager():
         annotated_image_ids = None
         for annotation_file in self.annotation_files:
             
-           # self.processed_path + "\\" + annotation_file
+     
             with open(os.path.join(self.processed_path, annotation_file), 'r') as f:
                 data = json.load(f)
 
@@ -69,7 +69,7 @@ class AnnotationManager():
             "bbox": 0,
             "pose": 1
         }.get(type, None)
-#self.processed_path +"\\" + self.annotation_files[file_index]
+   
             
         with open(os.path.join(self.processed_path, self.annotation_files[file_index]), 'r') as f:
             data = json.load(f)

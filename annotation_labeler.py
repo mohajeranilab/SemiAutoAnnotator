@@ -9,7 +9,6 @@ import argparse
 import sys
 import screeninfo
 from tqdm import tqdm
-import pywinctl as pwc
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import Qt
 import copy
@@ -901,7 +900,6 @@ class AnnotationTool():
             data = torch.load(self.model_manager.model_path)
             is_transformer_model = False
 
-           
           
             # iterate over the dictionary to check for 'RTDETR'
             for key, value in data.items():
@@ -1038,9 +1036,7 @@ class AnnotationTool():
 if __name__ == "__main__":
   
     app = QApplication(sys.argv) 
-
     tool = AnnotationTool()
-
     tool.run_tool()
 
 

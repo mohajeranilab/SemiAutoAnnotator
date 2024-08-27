@@ -27,7 +27,7 @@ class ModelManager():
 
     def predict_all(self, image_dir):
         """
-        Model predicts on all the available extracted images to sort them into different setss, correctly detected and incorrectly detected. 
+        Model predicts on all the available extracted images to sort them into different sets, correctly detected and incorrectly detected. 
         To measure the correctness of the prediction, heuristic methods are used down below.
 
         Params:
@@ -139,7 +139,7 @@ class ModelManager():
     
 
         # reading annotation data from json files and converting it into a format suitable for training
-        # if multiiple video paths are chosen for training on different videos
+        # if multiple video paths are chosen for training on different videos
         for video_path in video_paths:
             assert os.path.exists(os.path.join(video_path, "extracted_frames")), \
                 f"No extracted frames for the video folder you have chosen"
@@ -151,13 +151,14 @@ class ModelManager():
                 warnings.warn(f"There are no pose annotations made for {video_path}")
            
 
-            # video_path + "/bbox"
+     
             with open(os.path.join(video_path, "bbox_annotations.json"), 'r') as f:
                 data = json.load(f)
 
             for image_data in data["images"]:
                 shutil.copy(image_data["file_name"], img_train_path)
 
+            # creating and writing to a text file, following the format for ultralytic models
             for annotation in data["annotations"]:
                 image_id = annotation["image_id"]
                 for image_data in data["images"]:

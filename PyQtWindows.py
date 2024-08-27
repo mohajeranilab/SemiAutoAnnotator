@@ -42,14 +42,14 @@ class MainWindow(QMainWindow):
         self.scroll_bar_moved = False
         self.cluster_button = False
         self.cluster_count = False
-
+      
 
     def initialize(self):
         """
         Initialize the PyQt Window, set the geometry and size, add the main buttons, and add a scroll bar
         """
         self.setWindowTitle("Key Presses")
-        self.setGeometry(-5000, -5000, 205, 480)  # (x, y, width, height), set to -5000, -5000 so when it is initialized its off the screen
+        self.setGeometry(-5000, -5000, 205, 480)  # (x, y, width, height), set to -5000, -5000 so when it is initialized its off the screen, it will fix itself next to the CV2 window after
         self.setFixedSize(205, 480)
 
         central_widget = QWidget(self)
@@ -133,7 +133,6 @@ class MainWindow(QMainWindow):
             self.layout.addWidget(self.cluster_button)
         
 
-             
         self.return_button = QPushButton("Return", self)
         self.return_button.clicked.connect(self.original_buttons)
         icon = QIcon("assets/images/undo.png")
@@ -187,7 +186,7 @@ class MainWindow(QMainWindow):
             
         }
         
-        # creating buttons
+        # creating main buttons
         for key, text in button_mappings.items():
             self.button = QPushButton(text, self)
             self.button.clicked.connect(lambda state, key=key: self.on_button_clicked(key.lower()))
@@ -233,6 +232,7 @@ class MainWindow(QMainWindow):
         
         pose_button_names = ["Head", "Neck", "Tail", "R Ear", "L Ear", "R Leg", "L Leg"]
 
+        # creating pose buttons
         for i, name in enumerate(pose_button_names):
             self.button = QPushButton(name + f" ({(i+1)})", self)
             self.button.clicked.connect(lambda state, key=name: self.on_button_clicked(key.lower()))
@@ -279,7 +279,7 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    img_list = os.listdir("used_videos\\f_2024_05_31_12_58_53_05\\extracted_frames\\")
+    img_list = os.listdir("")
     window = MainWindow(img_list)
     window.show()
     sys.exit(app.exec_())

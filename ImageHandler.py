@@ -82,7 +82,7 @@ class ImageHandler():
         """
         global window_width_change, window_height_change
         
-        
+        # window_info values are filled with window information
         if not any(value is None for value in self.window_info.values()):
             
             # if a window exists with the image name, 
@@ -104,6 +104,7 @@ class ImageHandler():
                 self.window_info["coordinates"] = (x, y)
                 self.window_info["dimensions"] = (window_width, window_height)
             
+            # set coordinates and size to the window information
             else:
                 x, y = self.window_info["coordinates"]
                 window_width, window_height = self.window_info["dimensions"]
@@ -116,6 +117,7 @@ class ImageHandler():
                 x, y = window.left, window.top
 
                 window_width, window_height = window.width, window.height
+                
             # else, initialize with the following
             else:
                 x, y = self.screen_center_x, self.screen_center_y
