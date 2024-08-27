@@ -3,6 +3,7 @@ import os
 import shutil
 import json
 from PyQt5.QtWidgets import QApplication, QFileDialog
+from PyQt5.QtCore import Qt
 
 class VideoManager():
     """
@@ -40,12 +41,12 @@ class VideoManager():
         
         # extracting video name and creating a directory for the video
         video_name, _ = os.path.splitext(os.path.basename(video_path))
-        self.processed_path = os.path.join("used_videos", video_name)
+        self.processed_path = os.path.join("used_folders", video_name)
         os.makedirs(self.processed_path, exist_ok=True)
 
 
-        # copying video to the 'used_videos/{video_name}/ directory
-        shutil.copy(video_path, "used_videos/" + video_name.split(".")[0])
+        # copying video to the 'used_folders/{video_name}/ directory
+        shutil.copy(video_path, "used_folders/" + video_name.split(".")[0])
     
  
         if not os.path.exists(os.path.join(self.processed_path, "extracted_frames")):
@@ -110,7 +111,7 @@ class VideoManager():
         # extracting folder name and creating a directory for the folder
         folder_name = os.path.basename(folder_path)
    
-        self.folder_dir = os.path.join("used_videos", folder_name)
+        self.folder_dir = os.path.join("used_folders", folder_name)
     
         os.makedirs(self.folder_dir, exist_ok=True)
         # creating extracted_images in the chosen folder
@@ -150,8 +151,9 @@ class VideoManager():
 
         video_path = QFileDialog.getExistingDirectory(
             None,
-            "Select Video Folder",
-            "/",
+            "Select Folder",
+            "used_folders/",
+            options=QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks | QFileDialog.Option(Qt.WindowStaysOnTopHint)
         )
   
 
@@ -204,7 +206,26 @@ class VideoManager():
                             if len(keypoint_annotation) != 0:
                                 cv2.circle(image, (keypoint_annotation[1][0], keypoint_annotation[1][1]), 
                                                 5, self.annotation_colors[annotation["object_id"]], -1)
+                                
+                        
+                        keypoints = {kp[0]: kp[1] for kp in annotation['keypoints']}
 
+
+                        keypoint_pairs = [
+                            ("head", "neck"),
+                            ("neck", "tail"),
+                            ("neck", "l ear"),
+                            ("neck", "r ear"),
+                            ("tail", "l leg"),
+                            ("tail", "r leg")
+                        ]
+
+                        for key1, key2 in keypoint_pairs:
+                            if key1 in keypoints and key2 in keypoints:
+                                pt1 = tuple(keypoints[key1])
+                                pt2 = tuple(keypoints[key2])
+                                cv2.line(image, pt1, pt2, self.annotation_colors[annotation["object_id"]], thickness=1)
+        
                 video.write(image)
 
         video.release()

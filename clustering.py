@@ -355,8 +355,7 @@ def initialize_clustering(image_dir, model_path, frame_skip, is_transformer_mode
 
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    
-    # ultralytics transformer model 
+     
     model = RTDETR(model_path) if is_transformer_model else YOLO(model_path)
     model.to(device)
 
@@ -378,8 +377,6 @@ def initialize_clustering(image_dir, model_path, frame_skip, is_transformer_mode
     export_features(features, f"{image_dir.replace('extracted_frames', '')}/features_list.npy")
     
 if __name__ == "__main__":
-    #image_dir = Path("used_videos\\f_2024_03_14_13_12_21_03\extracted_frames")
-    #model_path = "..\best.pt"
     image_dir = ""
     model_path = ""
-    initialize_clustering(image_dir, model_path, False) # true if using transformer model (RT DETR)
+    initialize_clustering(image_dir, model_path, False) # true if using transformer model (RT DETR), false for YOLO

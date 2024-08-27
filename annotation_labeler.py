@@ -14,6 +14,7 @@ from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import Qt
 import copy
 import re
+import time
 
 from VideoManager import *
 from AnnotationManager import *
@@ -392,8 +393,10 @@ class AnnotationTool():
                     return
 
                 # moving scroll bar will change the image selected
+               
                 elif self.drawing_tool.image_handler.pyqt_window.scroll_bar_moved == True:
-
+             
+                    self.continue_work = False
                     self.drawing_tool.image_handler.img_num = self.drawing_tool.image_handler.pyqt_window.img_num
                     self.drawing_tool.image_handler.pyqt_window.scroll_bar_moved = False
                
@@ -408,6 +411,8 @@ class AnnotationTool():
                     self.drawing_tool.object_id = 1
                     self.drawing_tool.drawing_annotations()
                     self.drawing_tool.image_handler.show_image()
+
+                    self.drawing_tool.image_handler.pyqt_window.scroll_count = 0
 
                     cv2.destroyAllWindows()
                     return
@@ -729,7 +734,6 @@ class AnnotationTool():
         annotated_image_ids = set()
         
         # retrieving new image path and name
-        self.drawing_tool.image_handler.img_num = int(self.drawing_tool.image_handler.img_num)
         imagepath = os.path.join(self.drawing_tool.image_handler.current_dir, self.drawing_tool.image_handler.imgs[int(self.drawing_tool.image_handler.img_num)])
         imagename = os.path.basename(imagepath)
 
@@ -743,14 +747,13 @@ class AnnotationTool():
         if int(((self.drawing_tool.image_handler.cv2_img.name.split('_'))[-1]).replace('.jpg', '')) % self.frame_skip == 0:
                         
             
-            self.drawing_tool.image_handler.cv2_img = CV2Image(imagepath, imagename)
+            #self.drawing_tool.image_handler.cv2_img = CV2Image(imagepath, imagename)
             self.drawing_tool.image_handler.video_manager.cv2_img = self.drawing_tool.image_handler.cv2_img
 
             # retrieves the image ids that have annotations
             annotated_image_ids = self.annotation_manager.cleaning()
 
-            
-            # checks if annotatiosn already exist on the current CV2Image
+            # checks if annotations already exist on the current CV2Image
             if annotated_image_ids and self.is_passed == False:
                 for annotation_file in self.annotation_files:
                     
@@ -776,7 +779,6 @@ class AnnotationTool():
                 if self.continue_work == False:
                     self.annotating()
 
-        
         if self.drawing_tool.image_handler.img_num != len(self.drawing_tool.image_handler.imgs) - 1:
             
             self.drawing_tool.image_handler.img_num += 1
@@ -858,7 +860,7 @@ class AnnotationTool():
             image_location_name = self.drawing_tool.image_handler.video_manager.image_folder_extraction()
         
 
-        self.image_dir = os.path.join("used_videos", image_location_name.split(".")[0], "extracted_frames")
+        self.image_dir = os.path.join("used_folders", image_location_name.split(".")[0], "extracted_frames")
         
 
         # initialize the json files in the respective video directory
@@ -925,9 +927,9 @@ class AnnotationTool():
             # if clustering set to True
             if args.clustering and args.clustering != "False":
                 initialize_clustering((self.image_dir), self.model_manager.model_path, self.frame_skip, is_transformer_model)
-                dir_list = os.listdir("used_videos/" + image_location_name.split(".")[0] + "/clusters/")
+                dir_list = os.listdir("used_folders/" + image_location_name.split(".")[0] + "/clusters/")
                 for i, dir in enumerate(dir_list):
-                    dir_list[i] = "used_videos/" + image_location_name.split(".")[0] + "/clusters/" + dir + "/" 
+                    dir_list[i] = "used_folders/" + image_location_name.split(".")[0] + "/clusters/" + dir + "/" 
                 # delete extracted_frames to save space only if clustering 
                 if dir_list:
                     shutil.rmtree(self.image_dir, ignore_errors=True)
@@ -967,7 +969,7 @@ class AnnotationTool():
                 self.continue_work = False
      
         self.drawing_tool.image_handler.img_num = 0
-
+     
         # directory list will be the list of clusters if a model is chosen, or a list of extracted frames
         if not dir_list:
 

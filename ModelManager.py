@@ -123,7 +123,7 @@ class ModelManager():
             video_path = QFileDialog.getExistingDirectory(
                 None,
                 "Select Video Folders to Train",
-                "used_videos/"
+                "used_folders/"
             )
 
             if video_path == "":
@@ -228,7 +228,7 @@ class ModelManager():
                     "iscrowd": 0,
                     "area": (pred_y2 - pred_y1) * (pred_x2 - pred_x1),
                     "type": "detected bounding_box",
-                    "is_hidden": None, # model won't be able to detect if an image is "hidden"
+                    "is_hidden": None,
                     "conf": conf,
                     "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
